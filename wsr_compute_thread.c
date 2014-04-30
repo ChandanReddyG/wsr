@@ -127,7 +127,7 @@ void start_async_write_of_executed_tasks(int state){
 		return;
 
 	mppa_aiocb_ctor(&cc_to_io_aiocb[state],cc_to_io_fd[state], buf[state], BUFFER_SIZE);
-	mppa_aio_read(&cc_to_io_aiocb[state]);
+	mppa_aio_write(&cc_to_io_aiocb[state]);
 	return;
 }
 
@@ -156,7 +156,6 @@ WSR_TASK_LIST_P deseralize_tasks(int state){
 
 int main(int argc, char *argv[])
 {
-
 	cluster_id = mppa_getpid();
 
 	DMSG("Started proc on cluster %d\n", cluster_id);
@@ -195,7 +194,6 @@ int main(int argc, char *argv[])
 			mppa_exit(1);
 		}
 	}
-
 
 	for(i=0;i<PIPELINE_DEPTH;i++){
 		DMSG("Open portal %s\n", cc_to_io_path[i]);

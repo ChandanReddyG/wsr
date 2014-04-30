@@ -7,14 +7,14 @@ int wsr_seralize_task_size(WSR_TASK_P task){
 
 }
 
-int wsr_searlize_task_list_size(WSR_TASK_LIST_P task_list, int *num_tasks){
+int wsr_get_seralized_task_list_size(WSR_TASK_LIST_P task_list, int *num_tasks){
 
     if(task_list == NULL)
         return 0;
 
     (*num_tasks)++;
 
-    return wsr_seralize_task_size(task_list->task) + wsr_seralize_task_list_size(task_list->next, num_tasks);
+    return wsr_seralize_task_size(task_list->task) + wsr_get_seralize_task_list_size(task_list->next, num_tasks);
 
 }
 
@@ -98,35 +98,30 @@ void wsr_seralize_task_list(WSR_TASK_LIST_P task_list, char *buf){
 }
 
 
-//Serialise list of tasks and the accessed buffers
-//Return the single serilzed buffer and its size
+//Serialize list of tasks and the accessed buffers
+//Return the single serialized buffer and its size
 //Memory for the buffer is allocated inside the function
 //
-char* wsr_seralize_tasks(WSR_TASK_LIST *task_list, int *size){
+int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
     int num_tasks = 0;
     int buf_size = wst_seralize_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
+    assert(buf_size < BUFFER_SIZE);
 
-    int offset = 0;
-
-    char *buf = malloc(buf_size);
-    char *buffer = buf;
-    if(buf == NULL){
-        EMSG("Memory allocation failed\n" );
-        return NULL;
-    }
+   if(buf == NULL){
+	   EMSG("Buffer is null\n");
+	   return -1;
+   }
 
    memcpy(buf, &buf_size, sizeof(int));
    buf += sizeof(int);
 
-   memcpy(buf+offset, &num_tasks, sizeof(int));
-   offset += sizeof(int);
+   memcpy(buf, &num_tasks, sizeof(int));
+   buf += sizeof(int);
 
    wsr_seralize_task_list(task_list, buf);
 
-   *size = buf_size;
-
-   return buffer;
+   return  buf_size;
 }
 
 WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int size){

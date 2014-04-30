@@ -2,6 +2,10 @@
 #ifndef __WS_UTIL_H__
 #define __WS_UTIL_H__
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
+
 #define MAX_THREADS_PER_CLUSTER 16
 #define NUM_CLUSTERS 16
 

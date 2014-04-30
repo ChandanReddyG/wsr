@@ -36,6 +36,7 @@ typedef struct {
 } cluster_portals_t;
 
 cluster_portals_t io_to_cc_cluster_portal[BSP_NB_CLUSTER_MAX];
+cluster_portals_t cc_to_io_cluster_portal[BSP_NB_CLUSTER_MAX];
 
 //size of buffers used in double buffering scheme: 0.5 MB
 static void* buf[PIPELINE_DEPTH];
@@ -108,7 +109,101 @@ mppa_close_barrier(int sync_io_to_cluster_fd, int sync_clusters_to_io_fd)
 	mppa_close(sync_io_to_cluster_fd);
 }
 
+void start_async_write_of_ready_tasks(int cluster_id, int state, char *buf, int size ){
 
+	if(state<0 || state >= PIPELINE_DEPTH)
+		return;
+
+	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	mppa_aiocb_ctor(&(p.cb), p.fd, buf, size);
+	mppa_aio_write(&(p.cb));
+	return;
+
+}
+
+void wait_till_ready_task_transfer_completion(int cluster_id, int state){
+
+	if(state<0 || state >= PIPELINE_DEPTH)
+		return;
+
+	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	mppa_aio_wait(&(p.cb));
+	return;
+
+}
+
+void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, int size ){
+
+	if(state<0 || state >= PIPELINE_DEPTH)
+		return;
+
+	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	mppa_aiocb_ctor(&(p.cb), p.fd, buf, size);
+	mppa_aio_read(&(p.cb));
+	return;
+
+}
+
+void wait_till_executed_task_transfer_completion(int cluster_id, int state){
+
+	if(state<0 || state >= PIPELINE_DEPTH)
+		return;
+
+	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	mppa_aio_wait(&(p.cb));
+	return;
+
+}
+
+void service_cc(int cluster_id){
+
+	char *buf[PIPELINE_DEPTH];
+	int i = 0;
+	for(i=0;i<PIPELINE_DEPTH;i++){
+		buf[i] = memalign(64, BUFFER_SIZE);
+		if (!buf[i]) {
+			EMSG("Memory allocation failed: \n");
+			mppa_exit(1);
+		}
+	}
+
+	int prev_state = -1, cur_state = 0, next_state = 1;
+	int size = -1;
+
+	//Select
+    WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+
+    if(task_list != NULL)
+    	size = wsr_serialize_tasks(task_list, buf[cur_state]);
+
+
+	while(1){
+
+        if(prev_state>-1)
+        	wait_till_ready_task_transfer_completion(cluster_id, prev_state);
+
+        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+
+        //Receive the completed tasks of prev state
+        if(prev_state>-1){
+        	start_async_read_of_completed_tasks(cluster_id, prev_state, buf[prev_state],BUFFER_SIZE);
+        }
+
+        //Start selection of next tasks
+        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+
+        if(task_list == NULL)
+        	break;
+
+        size = wsr_serialize_tasks(task_list, buf[next_state]);
+
+		prev_state = cur_state;
+		cur_state = next_state;
+		next_state =  ++next_state%3;
+	}
+
+	return;
+}
 
 
 int main(int argc, char **argv) {
@@ -149,23 +244,7 @@ int main(int argc, char **argv) {
 	char sync_cc_to_io_path[128];
 	snprintf(sync_cc_to_io_path, 128, "/mppa/sync/%d:%d", mppa_getpid(), io_cnoc_rx_port++);
 
-	//Opening the portal for receiving completed tasks
-	mppa_aiocb_t aiocb_cc_to_io[PIPELINE_DEPTH][BSP_NB_DMA_IO];
-	int cc_to_io_fd[PIPELINE_DEPTH][BSP_NB_DMA_IO];
-
-	for(j=0;j<PIPELINE_DEPTH;j++){
-		for (int i = 0; i < BSP_NB_DMA_IO; i++) {
-			cc_to_io_fd[j][i] = mppa_open(cc_to_io_path[j][i], O_RDONLY);
-			mppa_aiocb_ctor(&aiocb_cc_to_io[j][i], cc_to_io_fd[j][i], buf[j], BUFFER_SIZE);
-			mppa_aiocb_set_trigger(&aiocb_cc_to_io[j][i], nb_clusters / BSP_NB_DMA_IO);
-			if (mppa_aio_read(&aiocb_cc_to_io[j][i]) < 0) {
-				EMSG("Error while aio_read completed tasks  \n");
-				mppa_exit(1);
-			}
-		}
-	}
-
-	//Opening portal from io to all the clusters
+	//Opening portal from io to all compute clusters and vice versa
 	for (int rank = 0; rank < nb_clusters; rank++) {
 		for(i =0;i<PIPELINE_DEPTH;i++){
 			// Open a multicast portal to send task groups
@@ -200,8 +279,12 @@ int main(int argc, char **argv) {
 				EMSG("Preparing wait resource %d failed!\n", rank);
 				mppa_exit(1);
 			}
-			mppa_aiocb_ctor(&io_to_cc_cluster_portal[rank].p[i].cb, io_to_cc_cluster_portal[rank].p[i].fd, buf[i], BUFFER_SIZE);
 
+		}
+
+		//open portals to transfer tasks from  cc to io
+		for(i =0;i<PIPELINE_DEPTH;i++){
+			cc_to_io_cluster_portal[rank].p[i] = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
 		}
 
 	}
