@@ -108,6 +108,9 @@ mppa_close_barrier(int sync_io_to_cluster_fd, int sync_clusters_to_io_fd)
 	mppa_close(sync_io_to_cluster_fd);
 }
 
+
+
+
 int main(int argc, char **argv) {
 	/////////////////////////////
 	// Get arguments from host //
@@ -156,7 +159,7 @@ int main(int argc, char **argv) {
                 mppa_aiocb_ctor(&aiocb_cc_to_io[j][i], cc_to_io_fd[j][i], buf[j], BUFFER_SIZE);
                 mppa_aiocb_set_trigger(&aiocb_cc_to_io[j][i], nb_clusters / BSP_NB_DMA_IO);
                 if (mppa_aio_read(&aiocb_cc_to_io[j][i]) < 0) {
-                        EMSG("Error while aio_read matrix C\n");
+                        EMSG("Error while aio_read completed tasks  \n");
                         mppa_exit(1);
                 }
         }
@@ -187,7 +190,7 @@ int main(int argc, char **argv) {
 
 			// mppa_aio_write needs some HW resources to perform the transfer. If no hardware resource are currently
 			// available, default behavior of mppa_aio_write is to return -EAGAIN. In this case, safe blocking call of this
-			// function shoule be done like:
+			// function should be done like:
 			// while ( ( res = mppa_aio_write(&aiocb) ) == -EAGAIN ) {}
 			// if ( res < 0 ) ...
 			// Going in and out of MPPAIPC continuously may disturb the system.
@@ -244,7 +247,7 @@ int main(int argc, char **argv) {
 		mppa_exit(1);
 	}
 
-	//main loop
+	//start transfers of tasks
 
 
 	mppa_close_barrier(sync_io_to_cc_fd, sync_cc_to_io_fd);
