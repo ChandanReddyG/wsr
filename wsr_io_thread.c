@@ -44,9 +44,9 @@ static void* buf[PIPELINE_DEPTH];
 // Initialization of the barrier (must be called before mppa_spawn)
 static int
 mppa_init_barrier(const char *sync_io_to_clusters_path,
-	const char *sync_clusters_to_io_path,
-	int *sync_io_to_cluster_fd,
-	int *sync_clusters_to_io_fd)
+		const char *sync_clusters_to_io_path,
+		int *sync_io_to_cluster_fd,
+		int *sync_clusters_to_io_fd)
 {
 	// Open IO to Clusters sync connector
 	*sync_io_to_cluster_fd = mppa_open(sync_io_to_clusters_path, O_WRONLY);
@@ -135,13 +135,13 @@ int main(int argc, char **argv) {
 
 	char io_to_cc_path[PIPELINE_DEPTH][128];
 	for(i=0;i<PIPELINE_DEPTH;i++)
-        snprintf(io_to_cc_path[i], 128, "/mppa/portal/[0..%lu]:%d", nb_clusters - 1, cluster_dnoc_rx_port++);
+		snprintf(io_to_cc_path[i], 128, "/mppa/portal/[0..%lu]:%d", nb_clusters - 1, cluster_dnoc_rx_port++);
 
 	char cc_to_io_path[PIPELINE_DEPTH][BSP_NB_DMA_IO][128];
 	for(j=0;j<PIPELINE_DEPTH;j++){
-        for (int i = 0; i < BSP_NB_DMA_IO; i++) {
-                snprintf(cc_to_io_path[j][i], 128, "/mppa/portal/%d:%d", mppa_getpid() + i, io_dnoc_rx_port++);
-        }
+		for (int i = 0; i < BSP_NB_DMA_IO; i++) {
+			snprintf(cc_to_io_path[j][i], 128, "/mppa/portal/%d:%d", mppa_getpid() + i, io_dnoc_rx_port++);
+		}
 	}
 
 	char sync_io_to_cc_path[128];
@@ -154,21 +154,21 @@ int main(int argc, char **argv) {
 	int cc_to_io_fd[PIPELINE_DEPTH][BSP_NB_DMA_IO];
 
 	for(j=0;j<PIPELINE_DEPTH;j++){
-        for (int i = 0; i < BSP_NB_DMA_IO; i++) {
-                cc_to_io_fd[j][i] = mppa_open(cc_to_io_path[j][i], O_RDONLY);
-                mppa_aiocb_ctor(&aiocb_cc_to_io[j][i], cc_to_io_fd[j][i], buf[j], BUFFER_SIZE);
-                mppa_aiocb_set_trigger(&aiocb_cc_to_io[j][i], nb_clusters / BSP_NB_DMA_IO);
-                if (mppa_aio_read(&aiocb_cc_to_io[j][i]) < 0) {
-                        EMSG("Error while aio_read completed tasks  \n");
-                        mppa_exit(1);
-                }
-        }
+		for (int i = 0; i < BSP_NB_DMA_IO; i++) {
+			cc_to_io_fd[j][i] = mppa_open(cc_to_io_path[j][i], O_RDONLY);
+			mppa_aiocb_ctor(&aiocb_cc_to_io[j][i], cc_to_io_fd[j][i], buf[j], BUFFER_SIZE);
+			mppa_aiocb_set_trigger(&aiocb_cc_to_io[j][i], nb_clusters / BSP_NB_DMA_IO);
+			if (mppa_aio_read(&aiocb_cc_to_io[j][i]) < 0) {
+				EMSG("Error while aio_read completed tasks  \n");
+				mppa_exit(1);
+			}
+		}
 	}
 
 	//Opening portal from io to all the clusters
 	for (int rank = 0; rank < nb_clusters; rank++) {
 		for(i =0;i<PIPELINE_DEPTH;i++){
-		   // Open a multicast portal to send task groups
+			// Open a multicast portal to send task groups
 			io_to_cc_cluster_portal[rank].p[i] = mppa_open(io_to_cc_path[i], O_WRONLY);
 
 			// Set unicast target 'rank'
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 	int sync_io_to_cc_fd = -1;
 	int sync_cc_to_io_fd = -1;
 	if (mppa_init_barrier(sync_io_to_cc_path, sync_cc_to_io_path, &sync_io_to_cc_fd,
-		&sync_cc_to_io_fd)) {
+			&sync_cc_to_io_fd)) {
 		EMSG("mppa_init_barrier failed\n");
 		mppa_exit(1);
 	}
@@ -231,9 +231,9 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < nb_clusters; i++) {
 		// [i%BSP_NB_DMA_IO] ensures independence between the group of clusters
 		const char *_argv[] = { CLUSTER_BIN_NAME, io_to_cc_path[0], io_to_cc_path[1], io_to_cc_path[2],
-					cc_to_io_path[0][i % BSP_NB_DMA_IO],cc_to_io_path[1][i % BSP_NB_DMA_IO],cc_to_io_path[1][i % BSP_NB_DMA_IO],
-					sync_io_to_cc_path, sync_cc_to_io_path,
-					 nb_clusters_str, nb_threads_str, 0 };
+				cc_to_io_path[0][i % BSP_NB_DMA_IO],cc_to_io_path[1][i % BSP_NB_DMA_IO],cc_to_io_path[1][i % BSP_NB_DMA_IO],
+				sync_io_to_cc_path, sync_cc_to_io_path,
+				nb_clusters_str, nb_threads_str, 0 };
 		if ((pids[i] = mppa_spawn(i, NULL, CLUSTER_BIN_NAME, _argv, NULL)) < 0) {
 			EMSG("spawn cluster %d failed, ret = %d\n", i, pids[i]);
 			mppa_exit(1);
@@ -255,8 +255,8 @@ int main(int argc, char **argv) {
 		int status;
 		int ret_pid = mppa_waitpid(pids[i], &status, 0);
 		if ((ret_pid != pids[i]) ||     /* Waitpid error               ? */
-			!WIFEXITED(status) ||   /* Does it exited normally     ? */
-			(WEXITSTATUS(status) != 0)) { /* Does it exited with success ? */
+				!WIFEXITED(status) ||   /* Does it exited normally     ? */
+				(WEXITSTATUS(status) != 0)) { /* Does it exited with success ? */
 			EMSG("Error with Cluster %d exit\n ", pids[i]);
 			int ret = EXIT_FAILURE;
 			mppa_exit(1);;
