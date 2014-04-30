@@ -3,7 +3,7 @@
 
 
 //data buffer
-typdef struct{
+typedef struct{
     //Pointer to buffer
     void *buf;
 
@@ -33,6 +33,6 @@ typedef struct{
 
 } WSR_BUFFER_LIST;
 
-typedef WSR_BUFFER_LIST* WSR_BUFFER_LIST_P
+typedef WSR_BUFFER_LIST* WSR_BUFFER_LIST_P;
 
 #endif

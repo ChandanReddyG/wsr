@@ -8,17 +8,23 @@
 typedef struct 
 {
 
+    //type of the task, used to identify the function ptr
+    int type;
+
     //Id of the task
-    int task_id;
+    int id;
 
     //function pointer of the task to execute
     void(*task_ptr)(void);
 
-    //sync counter to keep track of state (ready or not) 
+    //counter to keep track of state (ready or not) 
     int sync_counter;
 
+    //total number of dependent tasks
+    int num_dep_tasks;
+
     //List of dependent tasks
-    void *task_list;
+    void *dep_task_list;
 
     //Time it took to execute
     long time;
@@ -26,13 +32,15 @@ typedef struct
     //Total size of required data buffers
     int size;
 
+    //num of dep data buffers
+    int num_buffers;
+
     //list of required data buffers
     WSR_BUFFER_LIST *buffer_list;
 
 } WSR_TASK;
 
-typedef WSR_TASK *wsr_task_ptr;
-
+typedef  WSR_TASK* WSR_TASK_P;
 
 //Task list
 typedef struct {
@@ -44,5 +52,7 @@ typedef struct {
     WSR_TASK_LIST *next;
 
 } WSR_TASK_LIST;
+
+typedef WSR_TASK_LIST* WSR_TASK_LIST_P;
 
 #endif
