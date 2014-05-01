@@ -1,6 +1,7 @@
+#include <assert.h>
 #include "wsr_util.h"
 #include "wsr_buffer.h"
-
+#include <mppaipc.h>
 
 WSR_BUFFER_P wsr_buffer_alloc(int size, int id){
 
@@ -16,6 +17,7 @@ WSR_BUFFER_P wsr_buffer_alloc(int size, int id){
 
     buf->size = size;
     buf->id = id;
+    buf->buf = buf_ptr;
 
     return buf;
 }
@@ -29,7 +31,7 @@ WSR_BUFFER_P wsr_buffer_create(int size, int id, void *buf_ptr){
 
     buf->size = size;
     buf->id = id;
-    buf->buf_ptr = buf_ptr;
+    buf->buf = buf_ptr;
 
     return buf;
 }
@@ -37,8 +39,8 @@ void wsr_buffer_free(WSR_BUFFER_P buf){
 
     assert(buf != NULL);
 
-    if(buf->buf_ptr != NULL)
-        free(buf->buf_ptr);
+    if(buf->buf!= NULL)
+        free(buf->buf);
 
     free(buf);
 }
@@ -66,10 +68,10 @@ void wsr_buffer_list_free(WSR_BUFFER_LIST_P buffer_list, int free_buffers){
         return;
 
      if(buffer_list->next != NULL)
-         wsr_buffer_list_free(buffer_list->next);
+         wsr_buffer_list_free(buffer_list->next, free_buffers);
 
      if(free_buffers)
-         wsr_buffer_free(buffer_list->buffer);
+         wsr_buffer_free(buffer_list->buf_ptr);
 
       free(buffer_list);
 
@@ -94,7 +96,7 @@ void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 WSR_BUFFER_LIST_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
     while(buffer_list != NULL){
-        if(buffer_list->buf == buf){
+        if(buffer_list->buf_ptr== buf){
             return buffer_list; 
         }
 
@@ -111,7 +113,7 @@ void wsr_buffer_list_remove(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
     assert(buffer_list != NULL);
 
-    WSR_BUFFER_LIST_P prev == NULL;
+    WSR_BUFFER_LIST_P prev = NULL;
     int found = 0;
     while(buffer_list != NULL){
         if(buffer_list->buf_ptr == buf){
@@ -133,7 +135,7 @@ void wsr_buffer_list_remove(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
         free(buffer_list);
     }
     else {
-        buffer_list->buf = NULL;
+        buffer_list->buf_ptr = NULL;
         buffer_list->size -= buf->size;
     }
 

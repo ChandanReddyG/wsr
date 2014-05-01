@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include "util.h"
+#include "wsr_util.h"
 
 unsigned long
 convert_str_to_ul(const char *str)

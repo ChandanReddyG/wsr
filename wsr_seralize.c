@@ -1,5 +1,6 @@
-
+#include <mppaipc.h>
 #include "wsr_task.h"
+#include "wsr_buffer.h"
 
 int wsr_seralize_task_size(WSR_TASK_P task){
 
@@ -14,7 +15,7 @@ int wsr_get_seralized_task_list_size(WSR_TASK_LIST_P task_list, int *num_tasks){
 
     (*num_tasks)++;
 
-    return wsr_seralize_task_size(task_list->task) + wsr_get_seralize_task_list_size(task_list->next, num_tasks);
+    return wsr_seralize_task_size(task_list->task) + wsr_get_seralized_task_list_size(task_list->next, num_tasks);
 
 }
 
@@ -42,7 +43,7 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
     int i = 0, size = -1, id = -1;
 
     int num_buffers = task->num_buffers;
-    task->buffer_list = wsr_buffer_list_alloc(NULL);
+    task->buffer_list = wsr_buffer_list_create(NULL);
 
     for(i=0;i<num_buffers;i++){
         memcpy(&size, buf, sizeof(int));
@@ -51,8 +52,7 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
         buf += sizeof(int);
         assert(size > 0);
         assert(id >= 0);
-        WSR_BUFFER_P buf = wsr_buffer_create(size, id, buf);
-        wsr_buffer_list_add(task->buffer_list, buf); 
+        wsr_buffer_list_add(task->buffer_list,  wsr_buffer_create(size, id, buf));
         buf += size;
     }
 
@@ -66,7 +66,7 @@ void wsr_seralize_task(WSR_TASK_P task, char *buf){
     buf += sizeof(WSR_TASK);
    
     //copy the data buffer
-    wsr_seralize_data_buffers(task, buf);
+    wsr_seralize_data_buffers(task->buffer_list, buf);
 
 }
 
@@ -105,7 +105,7 @@ void wsr_seralize_task_list(WSR_TASK_LIST_P task_list, char *buf){
 int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
     int num_tasks = 0;
-    int buf_size = wst_seralize_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
+    int buf_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
     assert(buf_size < BUFFER_SIZE);
 
    if(buf == NULL){
@@ -129,7 +129,7 @@ WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int size){
     int num_tasks = 0;
     int buf_size = 0;
 
-    WSR_TASK_LIST_P task_list = wsr_task_list_alloc(NULL);
+    WSR_TASK_LIST_P task_list = wsr_task_list_create(NULL);
 
     memcpy(&buf_size, buf, sizeof(int));
     buf += sizeof(int);

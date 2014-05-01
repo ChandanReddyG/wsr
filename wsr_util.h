@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+ #include <string.h>
+#include <assert.h>
 
-#define MAX_THREADS_PER_CLUSTER 16
-#define NUM_CLUSTERS 16
 
 //size of buffers used in double buffering scheme: 0.5 MB
 #define BUFFER_SIZE 524288
@@ -16,7 +16,7 @@
 unsigned long
 convert_str_to_ul(const char *str);
 
-#  define IS_DEBUG 0
+#  define IS_DEBUG 1
 
 #  if IS_DEBUG == 1
 #    define DMSG(fmt, ...)                                    \
@@ -29,7 +29,7 @@ convert_str_to_ul(const char *str);
 
 # define EMSG(fmt, ...)                                                    \
 	do {                                                                    \
-		fprintf(stderr, "<%3d> ERROR: " fmt, mppa_getpid(), ## __VA_ARGS__);   \
+		fprintf(stderr, "<%3d> ERROR: " fmt,  mppa_getpid(), ## __VA_ARGS__);   \
 	} while (0)
 
 #endif

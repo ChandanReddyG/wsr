@@ -1,3 +1,4 @@
+#include <mppaipc.h>
 #include "wsr_util.h"
 #include "wsr_task.h"
 #include "wsr_task_functions.h"
@@ -29,7 +30,7 @@ void wsr_task_list_free(WSR_TASK_LIST_P task_list, int free_tasks){
 
 
     if(free_tasks)
-        wsr_task_free(task_list->task);
+        wsr_task_free(task_list->task, free_tasks);
 
     free(task_list);
 
@@ -38,7 +39,7 @@ void wsr_task_list_free(WSR_TASK_LIST_P task_list, int free_tasks){
 
 void wsr_task_list_add(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
-    asser(task_list != NULL);
+    assert(task_list != NULL);
 
     while(task_list != NULL)
         task_list = task_list->next;
@@ -50,7 +51,6 @@ void wsr_task_list_add(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
 void wsr_task_list_remove(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
-    WSR_TASK_LIST_P head = task_list;
 
     assert(task_list != NULL);
 
@@ -77,7 +77,7 @@ void wsr_task_list_remove(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
     }
     else{
         //if item to remove is a head, setting it to NULL, 
-        //rather than deleting it and mavoing the head
+        //rather than deleting it and moving the head
         task_list->task = NULL;
     }
 
@@ -86,7 +86,7 @@ void wsr_task_list_remove(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
 WSR_TASK_P wsr_task_alloc(int type, int task_id, int sync_counter){
 
-    WSR_TASK_P task = malloc(sizof(WSR_TASK));
+    WSR_TASK_P task = malloc(sizeof(WSR_TASK));
     if(task == NULL){
         EMSG("Failed to allocate memory\n");
         return NULL;
@@ -104,17 +104,17 @@ WSR_TASK_P wsr_task_alloc(int type, int task_id, int sync_counter){
     return task;
 }
 
-void wsr_task_free(WSR_TASK_P task){
+void wsr_task_free(WSR_TASK_P task, int free_buffers){
 
     if(task == NULL)
         return;
 
     if(task->buffer_list != NULL)
-        wsr_buffer_list_free(task->buffer_list);
+        wsr_buffer_list_free(task->buffer_list, free_buffers);
 
 
     if(task->dep_task_list != NULL)
-        wsr_task_list_free(task->dep_task_list);
+        wsr_task_list_free(task->dep_task_list, free_buffers);
 
     free(task);
 
@@ -127,7 +127,7 @@ void wsr_task_add_dependent_task(WSR_TASK_P task, WSR_TASK_P dep_task){
     assert(dep_task != NULL);
 
     if(task->dep_task_list == NULL)
-        task->dep_task_list = wsr_task_list_alloc(dep_task);
+        task->dep_task_list = wsr_task_list_create(dep_task);
     else
         wsr_task_list_add(task->dep_task_list, dep_task);
 
@@ -144,13 +144,13 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
     
 
     if(task->buffer_list == NULL)
-        task->buffer_list = wsr_buffer_list_alloc(buf);
+        task->buffer_list = wsr_buffer_list_create(buf);
     else
         wsr_buffer_list_add(task->buffer_list, buf);
 
     task->num_buffers++;
-    task->size += buf->buf;
-    
+    task->size += buf->size;
+
     return;
 }
 
@@ -166,7 +166,7 @@ void wsr_task_execute(WSR_TASK_P task){
 
     WSR_TASK_FUNC foo = wsr_get_function_ptr(task->type);
 
-    int ret = (*foo)(task->id);
+   (*foo)(task->id);
 
     return;
 }
@@ -182,4 +182,16 @@ void wsr_update_dep_tasks(WSR_TASK_P task){
     }
 
     return;
+}
+
+void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
+
+	if(task_list == NULL)
+		return;
+
+	wsr_task_execute(task_list->task);
+
+	wsr_task_list_execute(task_list->next);
+
+	return;
 }

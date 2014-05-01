@@ -15,10 +15,10 @@
 static unsigned long cluster_id;
 
 //Total number of clusters
-static unsigned long nb_cluster;
+//static unsigned long nb_cluster;
 
 //Number of threads to use
-static unsigned long nb_threads;
+//static unsigned long nb_threads;
 
 //global channel IDs used for communication
 static const char *io_to_cc_path[PIPELINE_DEPTH];
@@ -158,11 +158,11 @@ int main(int argc, char *argv[])
 {
 	cluster_id = mppa_getpid();
 
-	DMSG("Started proc on cluster %d\n", cluster_id);
+	DMSG("Started proc on cluster %lu\n", cluster_id);
 
 	int argn = 1;
 
-	int i, j;
+	int i;
 	for(i=0;i<PIPELINE_DEPTH;i++)
 		io_to_cc_path[i] = argv[argn++];
 
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 	int prev_state = -1, cur_state = 0, next_state = 1;
 	start_async_read_of_ready_tasks(cur_state);
 
-	WSR_TASK_LIST_P cur_tasks, prev_tasks;
+	WSR_TASK_LIST_P cur_tasks;
 
 	while(1){
 
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 		cur_tasks = deseralize_tasks(cur_state);
 
 		if(cur_tasks != NULL)
-			wsr_execute_tasks(cur_tasks);
+			wsr_task_list_execute(cur_tasks);
 
 		wait_till_executed_tasks_transfer_completion(prev_state);
 
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
 
 		prev_state = cur_state;
 		cur_state = next_state;
-		next_state =  ++next_state%3;
+		next_state =  (next_state+1)%3;
 	}
 
 	for(i=0;i<PIPELINE_DEPTH;i++)

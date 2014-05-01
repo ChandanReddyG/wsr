@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <sys/wait.h>
 
 #include <mppa_bsp.h>
 #include <mppaipc.h>
@@ -14,6 +15,9 @@
 
 #include "wsr_task.h"
 #include "wsr_seralize.h"
+#include "wsr_task_functions.h"
+
+#define ALIGN_MATRIX 1024 * 8
 
 // Number of clusters
 static unsigned long nb_clusters;
@@ -37,9 +41,6 @@ typedef struct {
 
 cluster_portals_t io_to_cc_cluster_portal[BSP_NB_CLUSTER_MAX];
 cluster_portals_t cc_to_io_cluster_portal[BSP_NB_CLUSTER_MAX];
-
-//size of buffers used in double buffering scheme: 0.5 MB
-static void* buf[PIPELINE_DEPTH];
 
 
 // Initialization of the barrier (must be called before mppa_spawn)
@@ -160,7 +161,7 @@ void service_cc(int cluster_id){
 	char *buf[PIPELINE_DEPTH];
 	int i = 0;
 	for(i=0;i<PIPELINE_DEPTH;i++){
-		buf[i] = memalign(64, BUFFER_SIZE);
+        posix_memalign((void**)&(buf[i]), ALIGN_MATRIX, BUFFER_SIZE);
 		if (!buf[i]) {
 			EMSG("Memory allocation failed: \n");
 			mppa_exit(1);
@@ -186,7 +187,7 @@ void service_cc(int cluster_id){
 
         //Receive the completed tasks of prev state
         if(prev_state>-1){
-        	start_async_read_of_completed_tasks(cluster_id, prev_state, buf[prev_state],BUFFER_SIZE);
+        	start_async_read_of_executed_tasks(cluster_id, prev_state, buf[prev_state],BUFFER_SIZE);
         }
 
         //Start selection of next tasks
@@ -199,7 +200,7 @@ void service_cc(int cluster_id){
 
 		prev_state = cur_state;
 		cur_state = next_state;
-		next_state =  ++next_state%3;
+		next_state =  (next_state + 1)%3;
 	}
 
 	return;
@@ -248,7 +249,7 @@ int main(int argc, char **argv) {
 	for (int rank = 0; rank < nb_clusters; rank++) {
 		for(i =0;i<PIPELINE_DEPTH;i++){
 			// Open a multicast portal to send task groups
-			io_to_cc_cluster_portal[rank].p[i] = mppa_open(io_to_cc_path[i], O_WRONLY);
+			io_to_cc_cluster_portal[rank].p[i].fd = mppa_open(io_to_cc_path[i], O_WRONLY);
 
 			// Set unicast target 'rank'
 			if (mppa_ioctl(io_to_cc_cluster_portal[rank].p[i].fd, MPPA_TX_SET_RX_RANK, rank) < 0) {
@@ -284,7 +285,7 @@ int main(int argc, char **argv) {
 
 		//open portals to transfer tasks from  cc to io
 		for(i =0;i<PIPELINE_DEPTH;i++){
-			cc_to_io_cluster_portal[rank].p[i] = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
+			cc_to_io_cluster_portal[rank].p[i].fd = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
 		}
 
 	}
@@ -341,7 +342,6 @@ int main(int argc, char **argv) {
 				!WIFEXITED(status) ||   /* Does it exited normally     ? */
 				(WEXITSTATUS(status) != 0)) { /* Does it exited with success ? */
 			EMSG("Error with Cluster %d exit\n ", pids[i]);
-			int ret = EXIT_FAILURE;
 			mppa_exit(1);;
 		}
 	}
