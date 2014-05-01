@@ -128,6 +128,7 @@ void start_async_write_of_executed_tasks(int state){
 		return;
 
 	assert(buf_size[state] > 0);
+	DMSG("Sending buf size = %d\n", buf_size[state]);
 	mppa_aiocb_ctor(&cc_to_io_aiocb[state], cc_to_io_fd[state], buf[state], buf_size[state]);
 	mppa_aiocb_set_pwrite(&cc_to_io_aiocb[state], buf[state], buf_size[state], 0);
 	mppa_aio_write(&cc_to_io_aiocb[state]);
@@ -232,9 +233,16 @@ int main(int argc, char *argv[])
         cur_tasks = deseralize_tasks(0);
 	DMSG("deseralized the tasks list\n");
 
+        int *c_v = (int *) (cur_tasks->task->buffer_list->next->next->buf_ptr->buf);
+        DMSG("C_v[0] = %d\n", c_v[0]);
+
 	DMSG("Starting execution of task list\n");
 		if(cur_tasks != NULL)
 			wsr_task_list_execute(cur_tasks);
+
+        cur_tasks = deseralize_tasks(0);
+        c_v = (int *) (cur_tasks->task->buffer_list->next->next->buf_ptr->buf);
+        DMSG("C_v[0] = %d\n", c_v[0]);
 
 		DMSG("Starting the send of finished tasks\n");
 		start_async_write_of_executed_tasks(0);

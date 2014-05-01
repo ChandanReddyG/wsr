@@ -49,11 +49,16 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
 
     for(i=0;i<num_buffers;i++){
         memcpy(&size, buf, sizeof(int));
+    DMSG("size of recived buffers = %d\n", size);
         buf += sizeof(int);
         memcpy(&id, buf, sizeof(int));
         buf += sizeof(int);
         assert(size > 0);
         assert(id >= 0);
+
+        int *temp = (int *)buf;
+
+        DMSG("recv[0] = %d\n", temp[0]);
         wsr_buffer_list_add(task->buffer_list,  wsr_buffer_create(size, id, buf));
         buf += size;
     }

@@ -139,7 +139,7 @@ void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, in
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	cluster_portal_t p = cc_to_io_cluster_portal[cluster_id].p[state];
 	mppa_aiocb_ctor(&(p.cb), p.fd, buf, size);
 	mppa_aio_read(&(p.cb));
 	return;
@@ -151,7 +151,7 @@ void wait_till_executed_task_transfer_completion(int cluster_id, int state){
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
+	cluster_portal_t p = cc_to_io_cluster_portal[cluster_id].p[state];
 	mppa_aio_wait(&(p.cb));
 	return;
 
@@ -180,14 +180,20 @@ void service_cc(int cluster_id){
     if(task_list != NULL)
     	size = wsr_serialize_tasks(task_list, buf[0]);
 
+        start_async_read_of_executed_tasks(cluster_id, 0, buf[1],BUFFER_SIZE);
+
     DMSG("Sending tasks to cc size = %d\n", size);
-        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[0], size);
+        start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
 
-        start_async_read_of_executed_tasks(cluster_id, 1, buf[1],BUFFER_SIZE);
+        wait_till_ready_task_transfer_completion(cluster_id, 0);
+    DMSG("Done with sending tasks to cc size = %d\n", size);
 
-        wait_till_executed_task_transfer_completion(cluster_id, 1);
+      wait_till_executed_task_transfer_completion(cluster_id, 0);
 
     DMSG("Executed task transfer complete from cc\n");
+
+    WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
+
 
 //	while(1){
 //
@@ -213,6 +219,9 @@ void service_cc(int cluster_id){
 //		cur_state = next_state;
 //		next_state =  (next_state + 1)%3;
 //	}
+
+
+    //Verify the output
 
 	return;
 }
@@ -306,7 +315,7 @@ int main(int argc, char **argv) {
         DMSG("Opening cc to io portals\n");
 		//open portals to transfer tasks from  cc to io
 		for(i =0;i<PIPELINE_DEPTH;i++){
-               DMSG("Open portal %s\n", cc_to_io_path[i]);
+               DMSG("Open portal %s\n", cc_to_io_path[i][rank%BSP_NB_DMA_IO]);
 			cc_to_io_cluster_portal[rank].p[i].fd = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
 		}
 

@@ -32,6 +32,38 @@ int compute_sum(WSR_BUFFER_P a1){
 	return sum;
 }
 
+int vector_sum(WSR_BUFFER_LIST_P buffer_list){
+
+	DMSG("vector sum function is called\n");
+	int i = 0;
+
+    WSR_BUFFER_P a_buf = buffer_list->buf_ptr;
+    assert(a_buf != NULL);
+	int  *a = (int *)a_buf->buf;
+	int num_elem_a = a_buf->size / sizeof(int);
+
+	buffer_list = buffer_list->next;
+    WSR_BUFFER_P b_buf = buffer_list->buf_ptr;
+    assert(b_buf != NULL);
+	int  *b = (int *)b_buf->buf;
+	int num_elem_b = b_buf->size / sizeof(int);
+
+	buffer_list = buffer_list->next;
+    WSR_BUFFER_P c_buf = buffer_list->buf_ptr;
+    assert(c_buf != NULL);
+	int  *c = (int *)c_buf->buf;
+	int num_elem_c = c_buf->size / sizeof(int);
+
+	DMSG("a = %d, b = %d, c =%d\n", num_elem_a, num_elem_b, num_elem_c);
+	assert((num_elem_a == num_elem_b) && (num_elem_a== num_elem_c));
+
+	for(i=0;i<num_elem_a;i++)
+		c[i] = a[i] + b[i];
+
+	DMSG("c[i] = %d\n", c[1]);
+
+	return 0;
+}
 
 int compute_default(int x){
 
@@ -41,18 +73,6 @@ int compute_default(int x){
     return 0;
 }
 
-WSR_TASK_FUNC wsr_get_function_ptr(int task_type){
-
-    switch (task_type)  {
-
-    case 0:
-        return &compute0;
-    case 1:
-        return &compute1;
-    default:
-        return &compute_default;
-    }
-}
 
 int wsr_execute_a_task(WSR_TASK_P task){
 
@@ -65,12 +85,15 @@ int wsr_execute_a_task(WSR_TASK_P task){
     case 3:
     	assert(task->buffer_list->buf_ptr != NULL);
         return compute_sum(task->buffer_list->buf_ptr);
+    case 4:
+    	assert(task->buffer_list != NULL);
+        return vector_sum(task->buffer_list);
     default:
         return compute_default(0);
     }
 }
 
-WSR_TASK_LIST_P get_next_task_list(int cluster_id){
+WSR_TASK_LIST_P get_reduction_task_list(int cluster_id){
 
 		int task_id = 0;
 
@@ -86,10 +109,48 @@ WSR_TASK_LIST_P get_next_task_list(int cluster_id){
 
 	WSR_TASK_LIST_P task_list = wsr_task_list_create(task);
 
+	return task_list;
 
-//       task = wsr_task_alloc(0, task_id, 0);
-//	wsr_task_list_add(task_list, task);
+}
+
+WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
+
+		int task_id = 0;
+
+		WSR_TASK_P task = wsr_task_alloc(4, task_id++, 0);
+
+		int num_elem = 10;
+
+		int *A = malloc(num_elem * sizeof(int));
+		for(int i = 0;i < num_elem; i++)
+			A[i] =12;
+
+		WSR_BUFFER_P buf = wsr_buffer_create(num_elem * sizeof(int), 0, A);
+		 wsr_task_add_dependent_buffer(task, buf);
+
+		int *B = malloc(num_elem * sizeof(int));
+		for(int i = 0;i < num_elem; i++)
+			B[i] =3;
+
+		 buf = wsr_buffer_create(num_elem * sizeof(int), 0, B);
+		 wsr_task_add_dependent_buffer(task, buf);
+
+		int *C = malloc(num_elem * sizeof(int));
+		for(int i = 0;i < num_elem; i++)
+			C[i] =100;
+
+		 buf = wsr_buffer_create(num_elem * sizeof(int), 0, C);
+		 wsr_task_add_dependent_buffer(task, buf);
+
+	WSR_TASK_LIST_P task_list = wsr_task_list_create(task);
 
 	return task_list;
+}
+
+WSR_TASK_LIST_P get_next_task_list(int cluster_id){
+
+
+//	return get_reduction_task_list(cluster_id);
+	return get_vector_sum_task_list(cluster_id);
 
 }
