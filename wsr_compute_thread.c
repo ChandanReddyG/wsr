@@ -31,6 +31,7 @@ static mppa_aiocb_t  io_to_cc_aiocb[PIPELINE_DEPTH], cc_to_io_aiocb[PIPELINE_DEP
 
 //size of buffers used in double buffering scheme: 0.5 MB
 static void* buf[PIPELINE_DEPTH];
+static int buf_size[PIPELINE_DEPTH];
 
 /////////////////////////////////////////////
 // Synchronization IO / Clusters functions //
@@ -126,8 +127,11 @@ void start_async_write_of_executed_tasks(int state){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_aiocb_ctor(&cc_to_io_aiocb[state],cc_to_io_fd[state], buf[state], BUFFER_SIZE);
+	assert(buf_size[state] > 0);
+	mppa_aiocb_ctor(&cc_to_io_aiocb[state], cc_to_io_fd[state], buf[state], buf_size[state]);
+	mppa_aiocb_set_pwrite(&cc_to_io_aiocb[state], buf[state], buf_size[state], 0);
 	mppa_aio_write(&cc_to_io_aiocb[state]);
+
 	return;
 }
 
@@ -146,6 +150,8 @@ WSR_TASK_LIST_P deseralize_tasks(int state){
 
 	if(state<0 || state > PIPELINE_DEPTH)
 		return NULL;
+
+    memcpy(&buf_size[state], buf[state], sizeof(int));
 
 	WSR_TASK_LIST_P task_list;
 	task_list = wsr_deseralize_tasks(buf[state], BUFFER_SIZE);
@@ -178,7 +184,10 @@ int main(int argc, char *argv[])
 			EMSG("Memory allocation failed: \n");
 			mppa_exit(1);
 		}
+		buf_size[i] = 0;
 	}
+
+	DMSG("Opening the barrier\n");
 	int sync_io_to_cc_fd = -1;
 	int sync_cc_to_io_fd = -1;
 	if (mppa_init_barrier(sync_io_to_cc_path, sync_cc_to_io_path, &sync_io_to_cc_fd,
@@ -187,6 +196,7 @@ int main(int argc, char *argv[])
 		mppa_exit(1);
 	}
 
+	DMSG("Opening the io to cc portals\n");
 	for(i=0;i<PIPELINE_DEPTH;i++){
 		DMSG("Open portal %s\n", io_to_cc_path[i]);
 		if((io_to_cc_fd[i] = mppa_open(io_to_cc_path[i], O_RDONLY)) < 0) {
@@ -195,6 +205,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	DMSG("Opening the cc to io portals\n");
 	for(i=0;i<PIPELINE_DEPTH;i++){
 		DMSG("Open portal %s\n", cc_to_io_path[i]);
 		if((cc_to_io_fd[i] = mppa_open(cc_to_io_path[i], O_WRONLY)) < 0) {
@@ -203,38 +214,60 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	DMSG("sync with io cluster complete\n");
 	if (mppa_barrier(sync_io_to_cc_fd, sync_cc_to_io_fd)) {
 		EMSG("mppa_barrier failed\n");
 		mppa_exit(1);
 	}
 
-	int prev_state = -1, cur_state = 0, next_state = 1;
-	start_async_read_of_ready_tasks(cur_state);
+	DMSG("start receiving the tasks list\n");
 
 	WSR_TASK_LIST_P cur_tasks;
+	start_async_read_of_ready_tasks(0);
 
-	while(1){
+	DMSG("waiting for task transfer to finish\n");
+	wait_till_ready_tasks_transfer_completion(0);
 
-		wait_till_ready_tasks_transfer_completion(cur_state);
+	DMSG("received the tasks list\n");
+        cur_tasks = deseralize_tasks(0);
+	DMSG("deseralized the tasks list\n");
 
-		start_async_read_of_ready_tasks(next_state);
-
-		cur_tasks = deseralize_tasks(cur_state);
-
+	DMSG("Starting execution of task list\n");
 		if(cur_tasks != NULL)
 			wsr_task_list_execute(cur_tasks);
 
-		wait_till_executed_tasks_transfer_completion(prev_state);
+		DMSG("Starting the send of finished tasks\n");
+		start_async_write_of_executed_tasks(0);
+		wait_till_executed_tasks_transfer_completion(0);
+		DMSG("finished with sending completed tasks\n");
 
-		if(cur_tasks == NULL)
-			break;
-
-		start_async_write_of_executed_tasks(cur_state);
-
-		prev_state = cur_state;
-		cur_state = next_state;
-		next_state =  (next_state+1)%3;
-	}
+//	int prev_state = -1, cur_state = 0, next_state = 1;
+//	start_async_read_of_ready_tasks(cur_state);
+//
+//	WSR_TASK_LIST_P cur_tasks;
+//
+//	while(1){
+//
+//		wait_till_ready_tasks_transfer_completion(cur_state);
+//
+//		start_async_read_of_ready_tasks(next_state);
+//
+//		cur_tasks = deseralize_tasks(cur_state);
+//
+//		if(cur_tasks != NULL)
+//			wsr_task_list_execute(cur_tasks);
+//
+//		wait_till_executed_tasks_transfer_completion(prev_state);
+//
+//		if(cur_tasks == NULL)
+//			break;
+//
+//		start_async_write_of_executed_tasks(cur_state);
+//
+//		prev_state = cur_state;
+//		cur_state = next_state;
+//		next_state =  (next_state+1)%3;
+//	}
 
 	for(i=0;i<PIPELINE_DEPTH;i++)
 		free(buf[i]);

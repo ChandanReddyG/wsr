@@ -1,5 +1,5 @@
 #include "wsr_task_functions.h"
-#include <mppaipc.h>
+//#include <mppaipc.h>
 
 
 int compute0(int x){
@@ -41,11 +41,12 @@ WSR_TASK_FUNC wsr_get_function_ptr(int task_type){
 
 WSR_TASK_LIST_P get_next_task_list(int cluster_id){
 
-	WSR_TASK_LIST_P task_list = wsr_task_list_create(NULL);
+		int task_id = 0;
+		WSR_TASK_P task = wsr_task_alloc(1, task_id++, 0);
+	WSR_TASK_LIST_P task_list = wsr_task_list_create(task);
 
-	int task_id = 0;
-	WSR_TASK_P task = wsr_task_alloc(1, task_id, 0);
 
+       task = wsr_task_alloc(0, task_id, 0);
 	wsr_task_list_add(task_list, task);
 
 	return task_list;

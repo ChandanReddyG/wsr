@@ -1,7 +1,7 @@
 #include <assert.h>
 #include "wsr_util.h"
 #include "wsr_buffer.h"
-#include <mppaipc.h>
+//#include <mppaipc.h>
 
 WSR_BUFFER_P wsr_buffer_alloc(int size, int id){
 

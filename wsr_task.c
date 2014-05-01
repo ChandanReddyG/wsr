@@ -1,4 +1,4 @@
-#include <mppaipc.h>
+//#include <mppaipc.h>
 #include "wsr_util.h"
 #include "wsr_task.h"
 #include "wsr_task_functions.h"
@@ -41,7 +41,12 @@ void wsr_task_list_add(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
     assert(task_list != NULL);
 
-    while(task_list != NULL)
+    if(task_list != NULL && task_list->task == NULL){
+            task_list->task = task;
+            return;
+    }
+
+    while(task_list->next != NULL)
         task_list = task_list->next;
 
     task_list->next = wsr_task_list_create(task);
@@ -100,6 +105,8 @@ WSR_TASK_P wsr_task_alloc(int type, int task_id, int sync_counter){
     task->sync_counter = 0;
     task->num_buffers = 0;
     task->size = 0;
+    task->buffer_list = NULL;
+    task->dep_task_list = NULL;
 
     return task;
 }

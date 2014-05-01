@@ -38,7 +38,7 @@ compute_matrices(int matrix_h,
 	int _nb_threads);
 
 
-#  define IS_DEBUG 0
+#  define IS_DEBUG 1
 
 #  if IS_DEBUG == 1
 #    define DMSG(fmt, ...)                                    \

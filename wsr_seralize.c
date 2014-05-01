@@ -1,10 +1,10 @@
-#include <mppaipc.h>
+//#include <mppaipc.h>
 #include "wsr_task.h"
 #include "wsr_buffer.h"
 
 int wsr_seralize_task_size(WSR_TASK_P task){
 
-    return sizeof(WSR_TASK) + task->buffer_list->size;
+    return sizeof(WSR_TASK) + task->size;
 
 }
 
@@ -13,13 +13,14 @@ int wsr_get_seralized_task_list_size(WSR_TASK_LIST_P task_list, int *num_tasks){
     if(task_list == NULL)
         return 0;
 
-    (*num_tasks)++;
+    (*num_tasks)++ ;
 
     return wsr_seralize_task_size(task_list->task) + wsr_get_seralized_task_list_size(task_list->next, num_tasks);
 
 }
 
 void wsr_seralize_data_buffers(WSR_BUFFER_LIST_P data_buffer_list, char *buf){
+
 
     if(data_buffer_list == NULL)
         return;
@@ -60,6 +61,8 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
 }
 
 void wsr_seralize_task(WSR_TASK_P task, char *buf){
+
+	assert(task != NULL);
 
     //copy the task 
     memcpy(buf, task, sizeof(WSR_TASK));
@@ -107,11 +110,14 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
     int num_tasks = 0;
     int buf_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
     assert(buf_size < BUFFER_SIZE);
+   DMSG("buf_size  = %d\n", buf_size);
+   DMSG("Num of tasks = %d\n", num_tasks);
 
    if(buf == NULL){
 	   EMSG("Buffer is null\n");
 	   return -1;
    }
+
 
    memcpy(buf, &buf_size, sizeof(int));
    buf += sizeof(int);
@@ -133,9 +139,11 @@ WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int size){
 
     memcpy(&buf_size, buf, sizeof(int));
     buf += sizeof(int);
+   DMSG("buf_size  = %d\n", buf_size);
 
     memcpy(&num_tasks, buf, sizeof(int));
     buf += sizeof(int);
+   DMSG("num of tasks recived   = %d\n", num_tasks);
 
     if(num_tasks == 0)
     	return NULL;
