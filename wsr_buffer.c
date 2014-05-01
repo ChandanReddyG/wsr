@@ -84,7 +84,12 @@ void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
     buffer_list->size += buf->size;
 
-    while(buffer_list != NULL)
+    if(buffer_list != NULL && buffer_list->buf_ptr == NULL){
+    	buffer_list->buf_ptr = buf;
+    	return;
+    }
+
+    while(buffer_list->next != NULL)
        buffer_list = buffer_list->next; 
 
     buffer_list->next = wsr_buffer_list_create(buf);

@@ -1,4 +1,4 @@
-//#include <mppaipc.h>
+#include <mppaipc.h>
 #include "wsr_util.h"
 #include "wsr_task.h"
 #include "wsr_task_functions.h"
@@ -156,7 +156,8 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
         wsr_buffer_list_add(task->buffer_list, buf);
 
     task->num_buffers++;
-    task->size += buf->size;
+    //size of buffer + id + size
+    task->size += buf->size + 2 * sizeof(int);
 
     return;
 }
@@ -169,14 +170,12 @@ void wsr_task_decrement_sync_counter(WSR_TASK_P task){
     return;
 }
 
-void wsr_task_execute(WSR_TASK_P task){
-
-    WSR_TASK_FUNC foo = wsr_get_function_ptr(task->type);
-
-   (*foo)(task->id);
-
-    return;
-}
+//void wsr_task_execute(WSR_TASK_P task){
+//
+//    WSR_TASK_FUNC foo = wsr_get_function_ptr(task->type);
+//
+//    return;
+//}
 
 void wsr_update_dep_tasks(WSR_TASK_P task){
 
@@ -196,7 +195,8 @@ void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
 	if(task_list == NULL)
 		return;
 
-	wsr_task_execute(task_list->task);
+//	wsr_task_execute(task_list->task);
+	wsr_execute_a_task(task_list->task);
 
 	wsr_task_list_execute(task_list->next);
 

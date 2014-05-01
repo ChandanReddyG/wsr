@@ -10,4 +10,6 @@
 
 WSR_TASK_LIST_P get_next_task_list(int cluster_id);
 
+int wsr_execute_a_task(WSR_TASK_P task);
+
 #endif

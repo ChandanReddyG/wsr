@@ -44,6 +44,7 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
     int i = 0, size = -1, id = -1;
 
     int num_buffers = task->num_buffers;
+    DMSG("Number of recived buffers = %d\n", num_buffers);
     task->buffer_list = wsr_buffer_list_create(NULL);
 
     for(i=0;i<num_buffers;i++){
