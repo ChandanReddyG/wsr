@@ -113,9 +113,10 @@ void wsr_seralize_task_list(WSR_TASK_LIST_P task_list, char *buf){
 //
 int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
+    DMSG("Serializing task list\n");
     int num_tasks = 0;
     int buf_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
-    assert(buf_size < BUFFER_SIZE);
+    assert(buf_size <= BUFFER_SIZE);
    DMSG("buf_size  = %d\n", buf_size);
    DMSG("Num of tasks = %d\n", num_tasks);
 

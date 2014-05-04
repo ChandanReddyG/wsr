@@ -11,6 +11,7 @@
 
 //size of buffers used in double buffering scheme: 0.5 MB
 #define BUFFER_SIZE 524288
+//#define BUFFER_SIZE 192
 #define PIPELINE_DEPTH 3
 
 unsigned long

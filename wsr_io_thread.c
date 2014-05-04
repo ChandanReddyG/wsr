@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #include <mppa_bsp.h>
 #include <mppaipc.h>
@@ -27,21 +28,12 @@ static unsigned long nb_threads;
 static const char *nb_threads_str;
 static const char *nb_clusters_str;
 
-typedef struct{
-	//fd returned by mppa_open
-	int fd;
+static int cc_to_io_fd[BSP_NB_CLUSTER_MAX][PIPELINE_DEPTH], io_to_cc_fd[BSP_NB_CLUSTER_MAX][PIPELINE_DEPTH];
 
-	// aiocb set by mppa_aio_ctor and used by mppa_aio_write and mppa_aio_rearm
-	mppa_aiocb_t cb;
-}cluster_portal_t;
+static mppa_aiocb_t  io_to_cc_aiocb[BSP_NB_CLUSTER_MAX][PIPELINE_DEPTH], cc_to_io_aiocb[BSP_NB_CLUSTER_MAX][PIPELINE_DEPTH];
 
-typedef struct {
-	cluster_portal_t	p[PIPELINE_DEPTH];
-} cluster_portals_t;
-
-cluster_portals_t io_to_cc_cluster_portal[BSP_NB_CLUSTER_MAX];
-cluster_portals_t cc_to_io_cluster_portal[BSP_NB_CLUSTER_MAX];
-
+int sync_io_to_cc_fd = -1;
+int sync_cc_to_io_fd = -1;
 
 // Initialization of the barrier (must be called before mppa_spawn)
 static int
@@ -110,49 +102,77 @@ mppa_close_barrier(int sync_io_to_cluster_fd, int sync_clusters_to_io_fd)
 	mppa_close(sync_io_to_cluster_fd);
 }
 
+mppa_aiocb_t temp;
+
 void start_async_write_of_ready_tasks(int cluster_id, int state, char *buf, int size ){
 
-	if(state<0 || state >= PIPELINE_DEPTH)
-		return;
-
-	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
-	mppa_aiocb_ctor(&(p.cb), p.fd, buf, size);
-	mppa_aiocb_set_pwrite(&(p.cb), buf, size, 0);
-	mppa_aio_write(&(p.cb));
-	return;
-
-}
-
-void wait_till_ready_task_transfer_completion(int cluster_id, int state){
 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-	cluster_portal_t p = io_to_cc_cluster_portal[cluster_id].p[state];
-	mppa_aio_wait(&(p.cb));
+		state  = 0;
+	int portal_fd = io_to_cc_fd[cluster_id][state];
+	mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
+	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
+	mppa_aiocb_set_pwrite(cur_aiocb, buf, size, 0);
+	int status = mppa_aio_write(cur_aiocb);
+	assert(status == 0);
+	DMSG("Starting the async write of ready task for cur_state = %d , ret = %d \n", state, status);
 	return;
 
 }
 
+void wait_till_ready_task_transfer_completion(int cluster_id, int state, int size){
+
+	DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
+
+	if(state<0 || state >= PIPELINE_DEPTH)
+		return;
+
+		state = 0;
+
+		mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
+	int status = mppa_aio_wait(cur_aiocb);
+	assert(status == size);
+
+	DMSG(" the ready task transfer is complete for state = %d, ret = %d\n", state, status);
+	return;
+
+}
+
+mppa_aiocb_t temp1;
 void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, int size ){
 
+
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-	cluster_portal_t p = cc_to_io_cluster_portal[cluster_id].p[state];
-	mppa_aiocb_ctor(&(p.cb), p.fd, buf, size);
-	mppa_aio_read(&(p.cb));
+		state = 0;
+
+		int portal_fd = cc_to_io_fd[cluster_id][state];
+		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
+
+	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
+	mppa_aiocb_set_trigger(cur_aiocb, 1);
+	int status = mppa_aio_read(cur_aiocb);
+	assert(status == 0);
+	DMSG("Starting the async read of executed task for cur_state = %d, ret = %d \n", state, status);
 	return;
 
 }
 
-void wait_till_executed_task_transfer_completion(int cluster_id, int state){
+void wait_till_executed_task_transfer_completion(int cluster_id, int state, int size){
 
+	DMSG("waiting for the executed task transfer to complete for state = %d\n", state);
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-	cluster_portal_t p = cc_to_io_cluster_portal[cluster_id].p[state];
-	mppa_aio_wait(&(p.cb));
+		state = 0;
+		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
+
+	int status =  mppa_aio_wait(cur_aiocb);
+	assert(status == size);
+	DMSG(" the executed task transfer is complete for state = %d, ret = %d\n", state, status);
 	return;
 
 }
@@ -162,66 +182,103 @@ void service_cc(int cluster_id){
 	char *buf[PIPELINE_DEPTH];
 	int i = 0;
 	for(i=0;i<PIPELINE_DEPTH;i++){
-        posix_memalign((void**)&(buf[i]), ALIGN_MATRIX, BUFFER_SIZE);
+		posix_memalign((void**)&(buf[i]), ALIGN_MATRIX, BUFFER_SIZE);
 		if (!buf[i]) {
 			EMSG("Memory allocation failed: \n");
 			mppa_exit(1);
 		}
 	}
 
-	int prev_state = -1, cur_state = 0, next_state = 1;
-	int size = -1;
+	int size;
+	//	for(i=0;i<1;i++){
 
-	DMSG("Getting new  task list\n");
+
+
+	start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
 	//Select
-    WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+	WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
 
-	DMSG("Serializing task list\n");
-    if(task_list != NULL)
-    	size = wsr_serialize_tasks(task_list, buf[0]);
+	if(task_list != NULL)
+		size = wsr_serialize_tasks(task_list, buf[0]);
 
-        start_async_read_of_executed_tasks(cluster_id, 0, buf[1],BUFFER_SIZE);
+	start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
 
-    DMSG("Sending tasks to cc size = %d\n", size);
-        start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
+	wait_till_ready_task_transfer_completion(cluster_id, 0, size);
 
-        wait_till_ready_task_transfer_completion(cluster_id, 0);
-    DMSG("Done with sending tasks to cc size = %d\n", size);
+	wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
 
-      wait_till_executed_task_transfer_completion(cluster_id, 0);
-
-    DMSG("Executed task transfer complete from cc\n");
-
-    WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
+	WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
 
 
-//	while(1){
+
+	DMSG("-----------------------------------------\n");
+
+//	start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
+//	//Select
+//	 task_list = get_next_task_list(cluster_id);
 //
-//        if(prev_state>-1)
-//        	wait_till_ready_task_transfer_completion(cluster_id, prev_state);
+//	if(task_list != NULL)
+//		size = wsr_serialize_tasks(task_list, buf[0]);
 //
-//        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+//	start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
 //
-//        //Receive the completed tasks of prev state
-//        if(prev_state>-1){
-//        	start_async_read_of_executed_tasks(cluster_id, prev_state, buf[prev_state],BUFFER_SIZE);
-//        }
+//	wait_till_ready_task_transfer_completion(cluster_id, 0);
 //
-//        //Start selection of next tasks
-//        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+//	wait_till_executed_task_transfer_completion(cluster_id, 0);
 //
-//        if(task_list == NULL)
-//        	break;
+//	 c = wsr_deseralize_tasks(buf[1], size);
 //
-//        size = wsr_serialize_tasks(task_list, buf[next_state]);
 //
-//		prev_state = cur_state;
-//		cur_state = next_state;
-//		next_state =  (next_state + 1)%3;
-//	}
+//	DMSG("-----------------------------------------\n");
+
+	DMSG("Out of the loop\n");
+
+	//	int prev_state = -1, cur_state = 0, next_state = 1;
+	//	int size = -1;
+	//
+	//
+	//	while(1){
+	//
+	//		DMSG("--------------------------------------------------------------------------\n");
+	//		DMSG("Started the loop prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+	//				next_state);
+	//
+	//        //Receive the completed tasks of prev state
+	//        if(prev_state>-1){
+	//        	DMSG("waiting for the Prev state executed task transfer to complete\n");
+	//        	wait_till_executed_task_transfer_completion(cluster_id, prev_state);
+	//        	DMSG("Prev state executed task transfer complete\n");
+	//        }
+	//        DMSG("Started the async read of executed task for cur_state\n");
+	//          start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
+	//
+	//        //Start selection of next tasks
+	//        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+	//
+	//        if(task_list == NULL)
+	//        	DMSG("task_list is null\n");
+	//
+	//        size = wsr_serialize_tasks(task_list, buf[next_state]);
+	//
+	//        if(prev_state>-1){
+	//              DMSG("waiting for the ready task transfer complete for prev_state\n");
+	//        	wait_till_ready_task_transfer_completion(cluster_id, prev_state);
+	//              DMSG("ready task transfer complete for prev_state\n");
+	//        }
+	//
+	//        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+	//        DMSG("Started the async write of ready tasks for cur_state\n");
+	//
+	//        if(task_list == NULL)
+	//        	break;
+	//
+	//		prev_state = cur_state;
+	//		cur_state = next_state;
+	//		next_state =  (next_state + 1)%3;
+	//	}
 
 
-    //Verify the output
+	//Verify the output
 
 	return;
 }
@@ -247,14 +304,14 @@ int main(int argc, char **argv) {
 
 	DMSG("Number of clusters = %lu, number of threads = %lu \n", nb_clusters, nb_threads);
 	int i = 0, j =0;
-	int io_dnoc_rx_port = 1;
+	int io_dnoc_rx_port = 7;
 	int cluster_dnoc_rx_port = 1;
 	int io_cnoc_rx_port = 1;
 	int cluster_cnoc_rx_port = 1;
 
 	char io_to_cc_path[PIPELINE_DEPTH][128];
 	for(i=0;i<PIPELINE_DEPTH;i++)
-		snprintf(io_to_cc_path[i], 128, "/mppa/portal/[0..%lu]:%d", nb_clusters - 1, cluster_dnoc_rx_port++);
+			snprintf(io_to_cc_path[i], 128, "/mppa/portal/[0..%lu]:%d", nb_clusters - 1, cluster_dnoc_rx_port++);
 
 	char cc_to_io_path[PIPELINE_DEPTH][BSP_NB_DMA_IO][128];
 	for(j=0;j<PIPELINE_DEPTH;j++){
@@ -274,14 +331,14 @@ int main(int argc, char **argv) {
 	for (int rank = 0; rank < nb_clusters; rank++) {
 		for(i =0;i<PIPELINE_DEPTH;i++){
 			// Open a multicast portal to send task groups
-               DMSG("Open portal %s\n", io_to_cc_path[i]);
-			if((io_to_cc_cluster_portal[rank].p[i].fd = mppa_open(io_to_cc_path[i], O_WRONLY)) < 0){
+			DMSG("Open portal %s\n", io_to_cc_path[i]);
+			if((io_to_cc_fd[rank][i] = mppa_open(io_to_cc_path[i], O_WRONLY)) < 0){
 				EMSG("Failed to open io_to_cc_portal %d to rank = %d \n", i, rank  );
 				mppa_exit(1);
 			}
 
 			// Set unicast target 'rank'
-			if (mppa_ioctl(io_to_cc_cluster_portal[rank].p[i].fd, MPPA_TX_SET_RX_RANK, rank) < 0) {
+			if (mppa_ioctl(io_to_cc_fd[rank][i], MPPA_TX_SET_RX_RANK, rank) < 0) {
 				EMSG("Preparing multiplex %d failed!\n", rank);
 				mppa_exit(1);
 			}
@@ -292,7 +349,7 @@ int main(int argc, char **argv) {
 			// MPPA_TX_SET_IFACE ioctl force mppa_aio_write for this fd to select a DMA resource in the given interface
 			// 'rank % BSP_NB_DMA_IO' policy ensure that transfers on one interface don't interfere with transfers of other
 			// interfaces.
-			if (mppa_ioctl(io_to_cc_cluster_portal[rank].p[i].fd, MPPA_TX_SET_IFACE, rank % BSP_NB_DMA_IO) < 0) {
+			if (mppa_ioctl(io_to_cc_fd[rank][i], MPPA_TX_SET_IFACE, rank % BSP_NB_DMA_IO) < 0) {
 				EMSG("Set iface %d failed!\n", rank % BSP_NB_DMA_IO);
 				mppa_exit(1);
 			}
@@ -305,18 +362,18 @@ int main(int argc, char **argv) {
 			// Going in and out of MPPAIPC continuously may disturb the system.
 			// With MPPA_TX_WAIT_RESOURCE_ON ioctl, further call of mppa_aio_write on this fd will block until an hardware
 			// resource is available.
-			if (mppa_ioctl(io_to_cc_cluster_portal[rank].p[i].fd, MPPA_TX_WAIT_RESOURCE_ON, 0) < 0) {
+			if (mppa_ioctl(io_to_cc_fd[rank][i], MPPA_TX_WAIT_RESOURCE_ON, 0) < 0) {
 				EMSG("Preparing wait resource %d failed!\n", rank);
 				mppa_exit(1);
 			}
 
 		}
 
-        DMSG("Opening cc to io portals\n");
+		DMSG("Opening cc to io portals\n");
 		//open portals to transfer tasks from  cc to io
 		for(i =0;i<PIPELINE_DEPTH;i++){
-               DMSG("Open portal %s\n", cc_to_io_path[i][rank%BSP_NB_DMA_IO]);
-			cc_to_io_cluster_portal[rank].p[i].fd = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
+			DMSG("Open portal %s\n", cc_to_io_path[i][rank%BSP_NB_DMA_IO]);
+			cc_to_io_fd[rank][i] = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
 		}
 
 	}
@@ -324,8 +381,7 @@ int main(int argc, char **argv) {
 	// sync connector Clusters->IO (RD) MUST be opened before any cluster attempt to write in.
 	// Then, we open it before the spawn.
 	DMSG("Opening barriers \n");
-	int sync_io_to_cc_fd = -1;
-	int sync_cc_to_io_fd = -1;
+
 	if (mppa_init_barrier(sync_io_to_cc_path, sync_cc_to_io_path, &sync_io_to_cc_fd,
 			&sync_cc_to_io_fd)) {
 		EMSG("mppa_init_barrier failed\n");

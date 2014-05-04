@@ -58,7 +58,7 @@ int vector_sum(WSR_BUFFER_LIST_P buffer_list){
 	assert((num_elem_a == num_elem_b) && (num_elem_a== num_elem_c));
 
 	for(i=0;i<num_elem_a;i++)
-		c[i] = a[i] + b[i];
+		c[i] = a[i] + b[i] + 3;
 
 	DMSG("c[i] = %d\n", c[1]);
 
@@ -147,8 +147,15 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 	return task_list;
 }
 
+static int num_iter = 5;
 WSR_TASK_LIST_P get_next_task_list(int cluster_id){
 
+    	DMSG("Getting new  task list num = %d\n", num_iter);
+
+		if(num_iter == 0)
+			return NULL;
+
+		num_iter--;
 
 //	return get_reduction_task_list(cluster_id);
 	return get_vector_sum_task_list(cluster_id);

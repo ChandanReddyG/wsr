@@ -192,6 +192,7 @@ void wsr_update_dep_tasks(WSR_TASK_P task){
 
 void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
 
+	DMSG("Starting execution of task list\n");
 	if(task_list == NULL)
 		return;
 

@@ -105,8 +105,11 @@ void start_async_read_of_ready_tasks(int state){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_aiocb_ctor(&io_to_cc_aiocb[state], io_to_cc_fd[state], buf[state], BUFFER_SIZE);
-	mppa_aio_read(&io_to_cc_aiocb[state]);
+	mppa_aiocb_ctor(&io_to_cc_aiocb[state], io_to_cc_fd[state], buf[state], buf_size[state]);
+	mppa_aiocb_set_trigger(&io_to_cc_aiocb[state], 1);
+	int status = mppa_aio_read(&io_to_cc_aiocb[state]);
+	assert(status == 0);
+	DMSG("Starting the async read of ready task for cur_state = %d ret = %d\n", state, status);
 
 	return;
 }
@@ -114,24 +117,30 @@ void start_async_read_of_ready_tasks(int state){
 //Wait till the transfer is complete
 void wait_till_ready_tasks_transfer_completion(int state){
 
+	DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_aio_wait(&io_to_cc_aiocb[state]);
+	int status = mppa_aio_wait(&io_to_cc_aiocb[state]);
+	assert(status == buf_size[state]);
+	DMSG(" the ready task transfer is complete from io to cc for state = %d, ret = %d\n", state, status);
 	return;
 }
 
 // Start the async transfer of group of tasks
 void start_async_write_of_executed_tasks(int state){
 
+
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	assert(buf_size[state] > 0);
+	assert(buf_size[state] >= 0);
 	DMSG("Sending buf size = %d\n", buf_size[state]);
 	mppa_aiocb_ctor(&cc_to_io_aiocb[state], cc_to_io_fd[state], buf[state], buf_size[state]);
 	mppa_aiocb_set_pwrite(&cc_to_io_aiocb[state], buf[state], buf_size[state], 0);
-	mppa_aio_write(&cc_to_io_aiocb[state]);
+	int status = mppa_aio_write(&cc_to_io_aiocb[state]);
+	assert(status == 0);
+	DMSG("Starting the async write of executed task for cur_state = %d, ret = %d\n", state, status);
 
 	return;
 }
@@ -139,20 +148,24 @@ void start_async_write_of_executed_tasks(int state){
 //Wait till the transfer is complete
 void wait_till_executed_tasks_transfer_completion(int state){
 
+	DMSG("waiting for the executed task transfer to complete for state = %d\n", state);
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_aio_wait(&cc_to_io_aiocb[state]);
+	int status = mppa_aio_wait(&cc_to_io_aiocb[state]);
+	assert(status == buf_size[state]);
+	DMSG(" the executed task transfer is complete from cc to io for state = %d, ret = %d\n", state, status);
 	return;
-
 }
 
 WSR_TASK_LIST_P deseralize_tasks(int state){
 
+	DMSG("deserialing the tasks list\n");
+
 	if(state<0 || state > PIPELINE_DEPTH)
 		return NULL;
 
-    memcpy(&buf_size[state], buf[state], sizeof(int));
+	memcpy(&buf_size[state], buf[state], sizeof(int));
 
 	WSR_TASK_LIST_P task_list;
 	task_list = wsr_deseralize_tasks(buf[state], BUFFER_SIZE);
@@ -221,62 +234,74 @@ int main(int argc, char *argv[])
 		mppa_exit(1);
 	}
 
-	DMSG("start receiving the tasks list\n");
 
+	buf_size[0] = BUFFER_SIZE;
 	WSR_TASK_LIST_P cur_tasks;
+
 	start_async_read_of_ready_tasks(0);
 
-	DMSG("waiting for task transfer to finish\n");
 	wait_till_ready_tasks_transfer_completion(0);
 
-	DMSG("received the tasks list\n");
-        cur_tasks = deseralize_tasks(0);
-	DMSG("deseralized the tasks list\n");
+	cur_tasks = deseralize_tasks(0);
 
-        int *c_v = (int *) (cur_tasks->task->buffer_list->next->next->buf_ptr->buf);
-        DMSG("C_v[0] = %d\n", c_v[0]);
+	if(cur_tasks != NULL)
+		wsr_task_list_execute(cur_tasks);
 
-	DMSG("Starting execution of task list\n");
-		if(cur_tasks != NULL)
-			wsr_task_list_execute(cur_tasks);
+	start_async_write_of_executed_tasks(0);
 
-        cur_tasks = deseralize_tasks(0);
-        c_v = (int *) (cur_tasks->task->buffer_list->next->next->buf_ptr->buf);
-        DMSG("C_v[0] = %d\n", c_v[0]);
+	wait_till_executed_tasks_transfer_completion(0);
 
-		DMSG("Starting the send of finished tasks\n");
-		start_async_write_of_executed_tasks(0);
-		wait_till_executed_tasks_transfer_completion(0);
-		DMSG("finished with sending completed tasks\n");
+	DMSG("--------------------------------------------------------------------------\n");
 
-//	int prev_state = -1, cur_state = 0, next_state = 1;
-//	start_async_read_of_ready_tasks(cur_state);
-//
-//	WSR_TASK_LIST_P cur_tasks;
-//
-//	while(1){
-//
-//		wait_till_ready_tasks_transfer_completion(cur_state);
-//
-//		start_async_read_of_ready_tasks(next_state);
-//
-//		cur_tasks = deseralize_tasks(cur_state);
-//
-//		if(cur_tasks != NULL)
-//			wsr_task_list_execute(cur_tasks);
-//
-//		wait_till_executed_tasks_transfer_completion(prev_state);
-//
-//		if(cur_tasks == NULL)
-//			break;
-//
-//		start_async_write_of_executed_tasks(cur_state);
-//
-//		prev_state = cur_state;
-//		cur_state = next_state;
-//		next_state =  (next_state+1)%3;
-//	}
 
+
+	DMSG("Out of the loop\n");
+
+	//	int prev_state = -1, cur_state = 0, next_state = 1;
+	//
+	//	DMSG("Started recving ready task cur state\n");
+	//	start_async_read_of_ready_tasks(cur_state);
+	//
+	//	WSR_TASK_LIST_P cur_tasks;
+	//
+	//	while(1){
+	//
+	//		DMSG("--------------------------------------------------------------------------\n");
+	//		DMSG("Started the loop prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+	//				next_state);
+	//
+	//        DMSG("waiting for the ready task transfer completion of cur_state\n");
+	//		wait_till_ready_tasks_transfer_completion(cur_state);
+	//        DMSG("the ready task transfer completion of cur_state\n");
+	//
+	//        DMSG("Starting recving of ready task for next state\n");
+	//		start_async_read_of_ready_tasks(next_state);
+	//
+	//		cur_tasks = deseralize_tasks(cur_state);
+	//
+	//		if(cur_tasks != NULL)
+	//			wsr_task_list_execute(cur_tasks);
+	//		DMSG("Completed the execution of current state tasks\n ");
+	//
+	//		DMSG("Waiting for the Prev state executed task transfer complete\n");
+	//		wait_till_executed_tasks_transfer_completion(prev_state);
+	//		DMSG("Prev state executed task transfer complete\n");
+	//
+	//        if(cur_tasks == NULL)
+	//        	DMSG("task_list is null, exiting the loop\n");
+	//
+	//		if(cur_tasks == NULL)
+	//			break;
+	//
+	//		start_async_write_of_executed_tasks(cur_state);
+	//		DMSG("started the aysnc write of executed task for cur_state\n");
+	//
+	//		prev_state = cur_state;
+	//		cur_state = next_state;
+	//		next_state =  (next_state+1)%3;
+	//	}
+
+	DMSG("Exited the loop \n");
 	for(i=0;i<PIPELINE_DEPTH;i++)
 		free(buf[i]);
 
