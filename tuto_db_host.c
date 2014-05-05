@@ -209,34 +209,34 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	if (global_m % (cluster_m * nb_clusters) != 0) {
-		EMSG("global_m=%lu must be a multiple of ( cluster_m x nb_clusters ) = %lu\n",
-			global_m,
-			cluster_m * nb_clusters);
-		return 1;
-	}
-
-	if (nb_clusters % BSP_NB_DMA_IO != 0) {
-		EMSG("nb_clusters=%lu must be a multiple of the number of IO DMA interfaces=%d\n",
-			nb_clusters,
-			BSP_NB_DMA_IO);
-	}
+//	if (global_m % (cluster_m * nb_clusters) != 0) {
+//		EMSG("global_m=%lu must be a multiple of ( cluster_m x nb_clusters ) = %lu\n",
+//			global_m,
+//			cluster_m * nb_clusters);
+//		return 1;
+//	}
+//
+//	if (nb_clusters % BSP_NB_DMA_IO != 0) {
+//		EMSG("nb_clusters=%lu must be a multiple of the number of IO DMA interfaces=%d\n",
+//			nb_clusters,
+//			BSP_NB_DMA_IO);
+//	}
 
 	global_matrix_size = global_n * global_m * sizeof(tuto_db_t);
 	cluster_matrix_size = global_n * cluster_m * sizeof(tuto_db_t);
-
-	printf("Tutorial double buffering:\n"
-	       "Global matrix %lu x %lu\n"
-	       "Local matrices  %lu x %lu\n"
-	       "%lu clusters\n"
-	       "%lu threads / cluster\n"
-	       "DDR memory needed: %llu kB\n"
-	       "SMEM memory needed (per cluster): %llu kB\n"
-		, global_n, global_m, cluster_m, global_n
-		, nb_clusters, nb_threads,
-		(global_matrix_size * 3) / 1024,
-		(cluster_matrix_size * 5) / 1024
-		);
+//
+//	printf("Tutorial double buffering:\n"
+//	       "Global matrix %lu x %lu\n"
+//	       "Local matrices  %lu x %lu\n"
+//	       "%lu clusters\n"
+//	       "%lu threads / cluster\n"
+//	       "DDR memory needed: %llu kB\n"
+//	       "SMEM memory needed (per cluster): %llu kB\n"
+//		, global_n, global_m, cluster_m, global_n
+//		, nb_clusters, nb_threads,
+//		(global_matrix_size * 3) / 1024,
+//		(cluster_matrix_size * 5) / 1024
+//		);
 
 
 	tuto_db_t (*a)[global_n], (*b)[global_n], (*c_host)[global_n], (*c_mppa)[global_n];

@@ -144,7 +144,7 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 
 	WSR_TASK_LIST_P task_list = wsr_task_list_create(task);
 
-	wsr_task_list_add(task_list, task);
+//	wsr_task_list_add(task_list, task);
 
 	return task_list;
 }
@@ -154,12 +154,12 @@ WSR_TASK_LIST_P get_next_task_list(int cluster_id){
 
     	DMSG("Getting new  task list num = %d\n", num_iter);
 
-//		if(num_iter == 0)
-//			return NULL;
+		if(num_iter == 0)
+			return NULL;
 
 //		num_iter--;
 
-//	return get_reduction_task_list(cluster_id);
-	return get_vector_sum_task_list(cluster_id);
+	return get_reduction_task_list(cluster_id);
+//	return get_vector_sum_task_list(cluster_id);
 
 }

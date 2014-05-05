@@ -110,7 +110,7 @@ void start_async_write_of_ready_tasks(int cluster_id, int state, char *buf, int 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-//		state  = 0;
+	//		state  = 0;
 	int portal_fd = io_to_cc_fd[cluster_id][state];
 	mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
 	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
@@ -129,11 +129,11 @@ void wait_till_ready_task_transfer_completion(int cluster_id, int state, int siz
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-//		state = 0;
+	//		state = 0;
 
-		mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
+	mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
 	int status = mppa_aio_wait(cur_aiocb);
-//	assert(status == size);
+	//	assert(status == size);
 
 	DMSG(" the ready task transfer is complete for state = %d, ret = %d\n", state, status);
 	return;
@@ -146,10 +146,10 @@ void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, in
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-//		state = 0;
+	//		state = 0;
 
-		int portal_fd = cc_to_io_fd[cluster_id][state];
-		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
+	int portal_fd = cc_to_io_fd[cluster_id][state];
+	mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
 
 	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
 	mppa_aiocb_set_trigger(cur_aiocb, 1);
@@ -166,8 +166,8 @@ void wait_till_executed_task_transfer_completion(int cluster_id, int state, int 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-//		state = 0;
-		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
+	//		state = 0;
+	mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
 
 	int status =  mppa_aio_wait(cur_aiocb);
 	assert(status == size);
@@ -176,8 +176,12 @@ void wait_till_executed_task_transfer_completion(int cluster_id, int state, int 
 
 }
 
-void service_cc(int cluster_id){
+void *service_cc(void *arg){
 
+	int cluster_id = ((int *)arg)[0];
+
+	DMSG("CC thread started = %d\n", cluster_id);
+	int ret = -1;
 	char *buf[PIPELINE_DEPTH];
 	int i = 0;
 	for(i=0;i<PIPELINE_DEPTH;i++){
@@ -193,71 +197,74 @@ void service_cc(int cluster_id){
 
 
 
-//	for(i=0;i<3;i++){
-//	start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
-//	//Select
-//	WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+//		for(i=0;i<3;i++){
+//		start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
+//		//Select
+//		WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
 //
-//	if(task_list != NULL)
-//		size = wsr_serialize_tasks(task_list, buf[0]);
+//		if(task_list != NULL)
+//			size = wsr_serialize_tasks(task_list, buf[0]);
 //
-//	start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
+//		start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
 //
-//	wait_till_ready_task_transfer_completion(cluster_id, 0, size);
+//		wait_till_ready_task_transfer_completion(cluster_id, 0, size);
 //
-//	wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
+//		wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
 //
-//	WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
-//	}
+//		WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
+//		}
+//
+//		DMSG("Out of the loop\n");
 
-//	DMSG("Out of the loop\n");
-
-		int prev_state = -1, cur_state = 0, next_state = 1;
+	int prev_state = -1, cur_state = 0, next_state = 1;
 
 
-		i = 10;
-		while(1){
+	i = 1;
+	while(1){
 
-			DMSG("--------------------------------------------------------------------------\n");
-			DMSG("Started the loop %d prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
-					next_state);
+		DMSG("--------------------------------------------------------------------------\n");
+		DMSG("Started the loop  prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+				next_state);
 
-	        //Receive the completed tasks of prev state
-	        if(prev_state>-1){
-	        	wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
+		//Receive the completed tasks of prev state
+		if(prev_state>-1){
+			wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
 
-                i--;
-	        	if(!i)
-                        break;
-	        }
-	          start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
-
-	        //Start selection of next tasks
-	        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
-
-	        if(task_list == NULL)
-	        	DMSG("task_list is null\n");
-
-	        size = wsr_serialize_tasks(task_list, buf[next_state]);
-
-	        if(prev_state>-1){
-	        	wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);
-	        }
-
-	        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
-
-	        if(task_list == NULL)
-	        	break;
-
-			prev_state = cur_state;
-			cur_state = next_state;
-			next_state =  (next_state + 1)%3;
+			i--;
+			if(!i)
+				break;
 		}
+		start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
+
+		//Start selection of next tasks
+		WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+
+		if(task_list == NULL)
+			DMSG("task_list is null\n");
+
+		size = wsr_serialize_tasks(task_list, buf[cur_state]);
+
+		if(prev_state>-1){
+			wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);
+		}
+
+		start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+
+		if(task_list == NULL)
+			break;
+
+		prev_state = cur_state;
+		cur_state = next_state;
+		next_state =  (next_state + 1)%3;
+	}
 
 
 	//Verify the output
 
-	return;
+
+	ret = 1;
+	pthread_exit((void *)&ret);
+	return NULL;
 }
 
 
@@ -273,6 +280,7 @@ int main(int argc, char **argv) {
 	}
 
 
+
 	int argn = 1;
 	nb_clusters_str = argv[argn++];
 	nb_threads_str = argv[argn++];
@@ -280,22 +288,29 @@ int main(int argc, char **argv) {
 	nb_threads = convert_str_to_ul(nb_threads_str);
 
 	DMSG("Number of clusters = %lu, number of threads = %lu \n", nb_clusters, nb_threads);
-	int i = 0, j =0;
+
+	int i = 0, j =0, k = 0;
 	int io_dnoc_rx_port = 7;
 	int cluster_dnoc_rx_port = 1;
 	int io_cnoc_rx_port = 1;
 	int cluster_cnoc_rx_port = 1;
 
-	char io_to_cc_path[PIPELINE_DEPTH][128];
-	for(i=0;i<PIPELINE_DEPTH;i++)
-			snprintf(io_to_cc_path[i], 128, "/mppa/portal/[0..%lu]:%d", nb_clusters - 1, cluster_dnoc_rx_port++);
-
-	char cc_to_io_path[PIPELINE_DEPTH][BSP_NB_DMA_IO][128];
-	for(j=0;j<PIPELINE_DEPTH;j++){
-		for (int i = 0; i < BSP_NB_DMA_IO; i++) {
-			snprintf(cc_to_io_path[j][i], 128, "/mppa/portal/%d:%d", mppa_getpid() + i, io_dnoc_rx_port++);
-		}
+	char io_to_cc_path[nb_clusters][PIPELINE_DEPTH][128];
+	char cc_to_io_path[nb_clusters][PIPELINE_DEPTH][128];
+	for(k=0;k<nb_clusters;k++){
+	for(i=0;i<PIPELINE_DEPTH;i++){
+		snprintf(io_to_cc_path[k][i], 128, "/mppa/portal/%d:%d", k, cluster_dnoc_rx_port++);
+        snprintf(cc_to_io_path[k][i], 128, "/mppa/portal/%d:%d", mppa_getpid() + k%BSP_NB_DMA_IO, io_dnoc_rx_port++);
 	}
+
+
+	}
+
+//	for(j=0;j<PIPELINE_DEPTH;j++){
+//		for (int i = 0; i < BSP_NB_DMA_IO; i++) {
+//			snprintf(cc_to_io_path[j][i], 128, "/mppa/portal/%d:%d", mppa_getpid() + i, io_dnoc_rx_port++);
+//		}
+//	}
 
 	char sync_io_to_cc_path[128];
 	snprintf(sync_io_to_cc_path, 128, "/mppa/sync/[0..%lu]:%d", nb_clusters - 1, cluster_cnoc_rx_port++);
@@ -308,17 +323,17 @@ int main(int argc, char **argv) {
 	for (int rank = 0; rank < nb_clusters; rank++) {
 		for(i =0;i<PIPELINE_DEPTH;i++){
 			// Open a multicast portal to send task groups
-			DMSG("Open portal %s\n", io_to_cc_path[i]);
-			if((io_to_cc_fd[rank][i] = mppa_open(io_to_cc_path[i], O_WRONLY)) < 0){
+			DMSG("Open portal %s\n", io_to_cc_path[rank][i]);
+			if((io_to_cc_fd[rank][i] = mppa_open(io_to_cc_path[rank][i], O_WRONLY)) < 0){
 				EMSG("Failed to open io_to_cc_portal %d to rank = %d \n", i, rank  );
 				mppa_exit(1);
 			}
 
 			// Set unicast target 'rank'
-			if (mppa_ioctl(io_to_cc_fd[rank][i], MPPA_TX_SET_RX_RANK, rank) < 0) {
-				EMSG("Preparing multiplex %d failed!\n", rank);
-				mppa_exit(1);
-			}
+//			if (mppa_ioctl(io_to_cc_fd[rank][i], MPPA_TX_SET_RX_RANK, rank) < 0) {
+//				EMSG("Preparing multiplex %d failed!\n", rank);
+//				mppa_exit(1);
+//			}
 
 			// Select which interface 'fd' will use to send task groups  to 'rank'
 			// We will use mppa_aio_write to perform the transfer: mppa_aio_write automatically select and reserve HW
@@ -349,8 +364,11 @@ int main(int argc, char **argv) {
 		DMSG("Opening cc to io portals\n");
 		//open portals to transfer tasks from  cc to io
 		for(i =0;i<PIPELINE_DEPTH;i++){
-			DMSG("Open portal %s\n", cc_to_io_path[i][rank%BSP_NB_DMA_IO]);
-			cc_to_io_fd[rank][i] = mppa_open(cc_to_io_path[i][rank%BSP_NB_DMA_IO], O_RDONLY);
+			DMSG("Open portal %s\n", cc_to_io_path[rank][i]);
+			if((cc_to_io_fd[rank][i] = mppa_open(cc_to_io_path[rank][i], O_RDONLY)) < 0){
+					EMSG("Failed to open io_to_cc_portal %d to rank = %d \n", i, rank  );
+					mppa_exit(1);
+				}
 		}
 
 	}
@@ -379,8 +397,8 @@ int main(int argc, char **argv) {
 	DMSG(" Spawn all compute clusters\n");
 	for (int i = 0; i < nb_clusters; i++) {
 		// [i%BSP_NB_DMA_IO] ensures independence between the group of clusters
-		const char *_argv[] = { CLUSTER_BIN_NAME, io_to_cc_path[0], io_to_cc_path[1], io_to_cc_path[2],
-				cc_to_io_path[0][i % BSP_NB_DMA_IO],cc_to_io_path[1][i % BSP_NB_DMA_IO],cc_to_io_path[2][i % BSP_NB_DMA_IO],
+		const char *_argv[] = { CLUSTER_BIN_NAME, io_to_cc_path[i][0], io_to_cc_path[i][1], io_to_cc_path[i][2],
+				cc_to_io_path[i][0],cc_to_io_path[i][1],cc_to_io_path[i][2],
 				sync_io_to_cc_path, sync_cc_to_io_path,
 				nb_clusters_str, nb_threads_str, 0 };
 		if ((pids[i] = mppa_spawn(i, NULL, CLUSTER_BIN_NAME, _argv, NULL)) < 0) {
@@ -397,8 +415,43 @@ int main(int argc, char **argv) {
 	}
 
 	DMSG("Sync complete\n Starting computation\n");
-	//start transfers of tasks
-	service_cc(0);
+
+	pthread_t t[nb_clusters];
+	int param[nb_clusters];
+
+	//start threads to service cc clusters
+	int res = -1;
+	for(i=0;i<nb_clusters ; i++){
+		param[i] = i;
+		while(1) {
+			res = pthread_create(&t[i], NULL, service_cc, &param[i]);
+			if( res == 0) {
+				break;
+			}
+			if( res == -EAGAIN ){
+				usleep(100000);
+			} else {
+				EMSG("pthread_create failed i %d, res = %d\n", i, res);
+				exit(-1);
+			}
+		}
+		DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
+	}
+
+	int ret_code = -1;
+	void *ret;
+	for (i = 0; i < nb_clusters; i++) {
+		pthread_join(t[i], &ret);
+//		if (pthread_join(t[i], &ret) != 0) {
+//			EMSG("pthread_join for thread %d failed\n", i);
+//			exit(-1);
+//		}
+		ret_code = ((int *)ret)[0];
+		if(ret_code != 1){
+			EMSG("pthread return code for %d failed\n", i);
+			exit(-1);
+		}
+	}
 
 	DMSG("Computation complete\n");
 	mppa_close_barrier(sync_io_to_cc_fd, sync_cc_to_io_fd);
@@ -412,7 +465,6 @@ int main(int argc, char **argv) {
 			mppa_exit(1);;
 		}
 	}
-
 
 }
 

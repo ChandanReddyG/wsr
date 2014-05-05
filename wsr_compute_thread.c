@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 //
 //	DMSG("--------------------------------------------------------------------------\n");
 //	}
-
+//
 //	DMSG("Out of the loop\n");
 
 		int prev_state = -1, cur_state = 0, next_state = 1;
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 //		DMSG("Started recving ready task cur state\n");
 		start_async_read_of_ready_tasks(cur_state);
 
-		i = 10;
+		i = 1;
 		while(1){
 
 			DMSG("--------------------------------------------------------------------------\n");
