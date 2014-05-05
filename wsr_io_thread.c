@@ -110,7 +110,7 @@ void start_async_write_of_ready_tasks(int cluster_id, int state, char *buf, int 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-		state  = 0;
+//		state  = 0;
 	int portal_fd = io_to_cc_fd[cluster_id][state];
 	mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
 	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
@@ -129,25 +129,24 @@ void wait_till_ready_task_transfer_completion(int cluster_id, int state, int siz
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-		state = 0;
+//		state = 0;
 
 		mppa_aiocb_t *cur_aiocb = &io_to_cc_aiocb[cluster_id][state];
 	int status = mppa_aio_wait(cur_aiocb);
-	assert(status == size);
+//	assert(status == size);
 
 	DMSG(" the ready task transfer is complete for state = %d, ret = %d\n", state, status);
 	return;
 
 }
 
-mppa_aiocb_t temp1;
 void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, int size ){
 
 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-		state = 0;
+//		state = 0;
 
 		int portal_fd = cc_to_io_fd[cluster_id][state];
 		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
@@ -167,7 +166,7 @@ void wait_till_executed_task_transfer_completion(int cluster_id, int state, int 
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
-		state = 0;
+//		state = 0;
 		mppa_aiocb_t *cur_aiocb = &cc_to_io_aiocb[cluster_id][state];
 
 	int status =  mppa_aio_wait(cur_aiocb);
@@ -194,88 +193,66 @@ void service_cc(int cluster_id){
 
 
 
-	start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
-	//Select
-	WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
-
-	if(task_list != NULL)
-		size = wsr_serialize_tasks(task_list, buf[0]);
-
-	start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
-
-	wait_till_ready_task_transfer_completion(cluster_id, 0, size);
-
-	wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
-
-	WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
-
-
-
-	DMSG("-----------------------------------------\n");
-
+//	for(i=0;i<3;i++){
 //	start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
 //	//Select
-//	 task_list = get_next_task_list(cluster_id);
+//	WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
 //
 //	if(task_list != NULL)
 //		size = wsr_serialize_tasks(task_list, buf[0]);
 //
 //	start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
 //
-//	wait_till_ready_task_transfer_completion(cluster_id, 0);
+//	wait_till_ready_task_transfer_completion(cluster_id, 0, size);
 //
-//	wait_till_executed_task_transfer_completion(cluster_id, 0);
+//	wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
 //
-//	 c = wsr_deseralize_tasks(buf[1], size);
-//
-//
-//	DMSG("-----------------------------------------\n");
+//	WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
+//	}
 
-	DMSG("Out of the loop\n");
+//	DMSG("Out of the loop\n");
 
-	//	int prev_state = -1, cur_state = 0, next_state = 1;
-	//	int size = -1;
-	//
-	//
-	//	while(1){
-	//
-	//		DMSG("--------------------------------------------------------------------------\n");
-	//		DMSG("Started the loop prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
-	//				next_state);
-	//
-	//        //Receive the completed tasks of prev state
-	//        if(prev_state>-1){
-	//        	DMSG("waiting for the Prev state executed task transfer to complete\n");
-	//        	wait_till_executed_task_transfer_completion(cluster_id, prev_state);
-	//        	DMSG("Prev state executed task transfer complete\n");
-	//        }
-	//        DMSG("Started the async read of executed task for cur_state\n");
-	//          start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
-	//
-	//        //Start selection of next tasks
-	//        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
-	//
-	//        if(task_list == NULL)
-	//        	DMSG("task_list is null\n");
-	//
-	//        size = wsr_serialize_tasks(task_list, buf[next_state]);
-	//
-	//        if(prev_state>-1){
-	//              DMSG("waiting for the ready task transfer complete for prev_state\n");
-	//        	wait_till_ready_task_transfer_completion(cluster_id, prev_state);
-	//              DMSG("ready task transfer complete for prev_state\n");
-	//        }
-	//
-	//        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
-	//        DMSG("Started the async write of ready tasks for cur_state\n");
-	//
-	//        if(task_list == NULL)
-	//        	break;
-	//
-	//		prev_state = cur_state;
-	//		cur_state = next_state;
-	//		next_state =  (next_state + 1)%3;
-	//	}
+		int prev_state = -1, cur_state = 0, next_state = 1;
+
+
+		i = 10;
+		while(1){
+
+			DMSG("--------------------------------------------------------------------------\n");
+			DMSG("Started the loop %d prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+					next_state);
+
+	        //Receive the completed tasks of prev state
+	        if(prev_state>-1){
+	        	wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
+
+                i--;
+	        	if(!i)
+                        break;
+	        }
+	          start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
+
+	        //Start selection of next tasks
+	        WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
+
+	        if(task_list == NULL)
+	        	DMSG("task_list is null\n");
+
+	        size = wsr_serialize_tasks(task_list, buf[next_state]);
+
+	        if(prev_state>-1){
+	        	wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);
+	        }
+
+	        start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+
+	        if(task_list == NULL)
+	        	break;
+
+			prev_state = cur_state;
+			cur_state = next_state;
+			next_state =  (next_state + 1)%3;
+		}
 
 
 	//Verify the output
