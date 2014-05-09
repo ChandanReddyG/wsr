@@ -255,7 +255,7 @@ void *service_cc(void *arg){
 
 		prev_state = cur_state;
 		cur_state = next_state;
-		next_state =  (next_state + 1)%3;
+		next_state =  (next_state + 1)%PIPELINE_DEPTH;
 	}
 
 
@@ -442,10 +442,7 @@ int main(int argc, char **argv) {
 	void *ret;
 	for (i = 0; i < nb_clusters; i++) {
 		pthread_join(t[i], &ret);
-//		if (pthread_join(t[i], &ret) != 0) {
-//			EMSG("pthread_join for thread %d failed\n", i);
-//			exit(-1);
-//		}
+
 		ret_code = ((int *)ret)[0];
 		if(ret_code != 1){
 			EMSG("pthread return code for %d failed\n", i);

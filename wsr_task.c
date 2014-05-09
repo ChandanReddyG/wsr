@@ -2,6 +2,7 @@
 #include "wsr_util.h"
 #include "wsr_task.h"
 #include "wsr_task_functions.h"
+#include "wsr_cdeque.h"
 
 WSR_TASK_LIST_P  wsr_task_list_create(WSR_TASK_P task){
 
@@ -12,8 +13,7 @@ WSR_TASK_LIST_P  wsr_task_list_create(WSR_TASK_P task){
         return task_list;
     }
 
-    if(task != NULL)
-        task_list->task = task;
+task_list->task = task;
 
     task_list->next = NULL;
 
@@ -102,11 +102,12 @@ WSR_TASK_P wsr_task_alloc(int type, int task_id, int sync_counter){
 
     
     task->num_dep_tasks = 0;
-    task->sync_counter = 0;
+
     task->num_buffers = 0;
     task->size = 0;
     task->buffer_list = NULL;
     task->dep_task_list = NULL;
+    atomic_store_explicit (&task->sync_counter, 0, relaxed);
 
     return task;
 }
@@ -139,7 +140,8 @@ void wsr_task_add_dependent_task(WSR_TASK_P task, WSR_TASK_P dep_task){
         wsr_task_list_add(task->dep_task_list, dep_task);
 
     task->num_dep_tasks++;
-    task->sync_counter++;
+    size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+    atomic_store_explicit (&task->sync_counter, sync_counter+ 1, relaxed);
 
     return;
 }
@@ -162,28 +164,25 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
     return;
 }
 
-void wsr_task_decrement_sync_counter(WSR_TASK_P task){
+void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id){
 
-    task->sync_counter--;
-    //TODO: Add the tasks to ready queue if count becomes zero
+    size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+    atomic_store_explicit (&task->sync_counter, sync_counter- 1, relaxed);
+    if(sync_counter == 0)
+    	cdeque_push_task(thread_id, task);
+
 
     return;
 }
 
-//void wsr_task_execute(WSR_TASK_P task){
-//
-//    WSR_TASK_FUNC foo = wsr_get_function_ptr(task->type);
-//
-//    return;
-//}
 
-void wsr_update_dep_tasks(WSR_TASK_P task){
+void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id){
 
     WSR_TASK_LIST_P task_list = task->dep_task_list;
 
     while(task_list != NULL){
 
-        wsr_task_decrement_sync_counter(task_list->task);
+        wsr_task_decrement_sync_counter(task_list->task, thread_id);
         task_list = task_list->next;
     }
 
@@ -197,7 +196,7 @@ void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
 		return;
 
 //	wsr_task_execute(task_list->task);
-	wsr_execute_a_task(task_list->task);
+	wsr_execute_a_task(task_list->task, 0);
 
 	wsr_task_list_execute(task_list->next);
 

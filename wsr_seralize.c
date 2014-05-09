@@ -137,26 +137,24 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
    return  buf_size;
 }
 
-WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int size){
+WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int *buf_size, int *num_tasks){
 
-    int num_tasks = 0;
-    int buf_size = 0;
 
     WSR_TASK_LIST_P task_list = wsr_task_list_create(NULL);
 
-    memcpy(&buf_size, buf, sizeof(int));
+    memcpy(buf_size, buf, sizeof(int));
     buf += sizeof(int);
-   DMSG("buf_size  = %d\n", buf_size);
+   DMSG("buf_size  = %d\n",*buf_size);
 
-    memcpy(&num_tasks, buf, sizeof(int));
+    memcpy(num_tasks, buf, sizeof(int));
     buf += sizeof(int);
-   DMSG("num of tasks recived   = %d\n", num_tasks);
+   DMSG("num of tasks recived   = %d\n",*num_tasks);
 
     if(num_tasks == 0)
     	return NULL;
 
     int i = 0;
-    for(i=0;i<num_tasks;i++)
+    for(i=0;i<*num_tasks;i++)
         buf = wsr_deseralize_task(task_list, buf);
 
     return task_list;

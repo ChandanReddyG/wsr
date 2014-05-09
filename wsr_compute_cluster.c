@@ -281,20 +281,12 @@ main(__attribute__((unused)) int argc, char *argv[])
 		mppa_exit(1);
 	}
 
-	mppa_tracepoint(tuto_db, init_nocipc__out);
-
-
-	mppa_tracepoint(tuto_db, synchro__in);
 
 	if (mppa_barrier(sync_io_to_cluster_fd, sync_clusters_to_io_fd)) {
 		EMSG("mppa_barrier failed\n");
 		mppa_exit(1);
 	}
 
-	mppa_tracepoint(tuto_db, synchro__out);
-
-
-	mppa_tracepoint(tuto_db, main_loop__in);
 
 	int step = 0;
 	unsigned long first_y = nb_submatrices_per_cluster * cluster_m * mppa_getpid();
@@ -339,10 +331,6 @@ main(__attribute__((unused)) int argc, char *argv[])
 			(cur_y * global_n) * sizeof(tuto_db_t));
 		mppa_aio_write(&aiocb_write_c);
 	}
-	// It's time to say good bye
-	// with -global_n * 2, we are sure that value will be negative after offset operation on IO
-	mppa_tracepoint(tuto_db, one_cluster_finished);
-	_ask_submatrix(-1, -1, -1);
 
 	mppa_tracepoint(tuto_db, wait_end_C_transfer__in, step);
 	mppa_aio_wait(&aiocb_write_c);

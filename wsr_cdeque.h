@@ -9,11 +9,11 @@
 #ifndef __WSR_CDEQUE_H__
 #define __WSR_CDEQUE_H__
 
-#include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "stdatomic.h"
 #include "wsr_task.h"
 #include "atomic-defs-c11.h"
 #include "cbuffer-c11.h"
@@ -24,6 +24,7 @@ struct cdeque
 {
   atomic_size_t bottom __attribute__ ((aligned (64)));
   atomic_size_t top __attribute__ ((aligned (64)));
+  atomic_size_t  num_tasks  __attribute__((aligned(64)));
   cbuffer_atomic_p cbuffer __attribute__ ((aligned (64)));
 };
 
@@ -67,10 +68,12 @@ print_cdeque (cdeque_p cdeque)
   printf ("\n");
 }
 
-#define CDEQUE_API static inline
-CDEQUE_API void cdeque_push_bottom (cdeque_p, wsr_task_p);
-CDEQUE_API int cdeque_push_bottom (cdeque_p, wsr_task_p);
-CDEQUE_API wsr_task_p cdeque_take (cdeque_p);
-CDEQUE_API wsr_task_p cdeque_steal (cdeque_p);
-
+ void cdeque_push_bottom (cdeque_p, WSR_TASK_P);
+ void cdeque_push_task(int , WSR_TASK_P );
+ int cdeque_try_push_bottom (cdeque_p, WSR_TASK_P);
+ WSR_TASK_P cdeque_take (cdeque_p);
+ WSR_TASK_P cdeque_steal (cdeque_p);
+  void *wsr_cdeque_execute(void *arg);
+ void wsr_init_cdeques(int num_threads);
+ void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads);
 #endif

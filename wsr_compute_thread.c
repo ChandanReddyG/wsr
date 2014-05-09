@@ -7,6 +7,7 @@
 
 #include "wsr_util.h"
 #include "wsr_task.h"
+#include "wsr_cdeque.h"
 #include "wsr_seralize.h"
 
 // Global Variables
@@ -15,10 +16,13 @@
 static unsigned long cluster_id;
 
 //Total number of clusters
-//static unsigned long nb_cluster;
+static unsigned long nb_clusters;
 
 //Number of threads to use
-//static unsigned long nb_threads;
+static unsigned long nb_threads;
+
+static const char *nb_threads_str;
+static const char *nb_clusters_str;
 
 //global channel IDs used for communication
 static const char *io_to_cc_path[PIPELINE_DEPTH];
@@ -158,21 +162,61 @@ void wait_till_executed_tasks_transfer_completion(int state){
 	return;
 }
 
-WSR_TASK_LIST_P deseralize_tasks(int state){
+WSR_TASK_LIST_P deseralize_tasks(int state, int *num_tasks){
 
 	DMSG("deserialing the tasks list\n");
 
 	if(state<0 || state > PIPELINE_DEPTH)
 		return NULL;
 
-	memcpy(&buf_size[state], buf[state], sizeof(int));
+//	memcpy(&buf_size[state], buf[state], sizeof(int));
 
 	WSR_TASK_LIST_P task_list;
-	task_list = wsr_deseralize_tasks(buf[state], BUFFER_SIZE);
+	task_list = wsr_deseralize_tasks(buf[state], &buf_size[state], num_tasks);
 
 	return task_list;
 }
 
+void execute_tasks(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads){
+
+	wsr_add_to_cdeque(task_list, num_tasks, num_threads);
+
+	//start compute cluster threads
+	int res = -1, i;
+	pthread_t t[num_threads];
+	int param[num_threads];
+	for(i=1;i<num_threads; i++){
+		param[i] = i;
+		while(1) {
+			res = pthread_create(&t[i], NULL, wsr_cdeque_execute, &param[i]);
+			if( res == 0) {
+				break;
+			}
+			if( res == -EAGAIN ){
+				usleep(100000);
+			} else {
+				EMSG("pthread_create failed i %d, res = %d\n", i, res);
+				exit(-1);
+			}
+		}
+		DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
+	}
+
+	int parm = 0;
+	wsr_cdeque_execute(&parm);
+
+	int ret_code = -1;
+	void *ret;
+	for (i = 1; i < num_threads; i++) {
+		pthread_join(t[i], &ret);
+
+		ret_code = ((int *)ret)[0];
+//		if(ret_code != 0){
+//			EMSG("pthread return code for %d failed\n", i);
+//			exit(-1);
+//		}
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -192,6 +236,12 @@ int main(int argc, char *argv[])
 	const char *sync_io_to_cc_path = argv[argn++];
 	const char *sync_cc_to_io_path = argv[argn++];
 
+	nb_clusters_str = argv[argn++];
+	nb_threads_str = argv[argn++];
+
+	nb_clusters = convert_str_to_ul(nb_clusters_str);
+	nb_threads = convert_str_to_ul(nb_threads_str);
+
 	for(i=0;i<PIPELINE_DEPTH;i++){
 		buf[i] = memalign(64, BUFFER_SIZE);
 		if (!buf[i]) {
@@ -200,6 +250,8 @@ int main(int argc, char *argv[])
 		}
 		buf_size[i] = 0;
 	}
+
+	wsr_init_cdeques(nb_threads);
 
 	DMSG("Opening the barrier\n");
 	int sync_io_to_cc_fd = -1;
@@ -238,6 +290,9 @@ int main(int argc, char *argv[])
 	buf_size[0] = BUFFER_SIZE;
 	buf_size[1] = BUFFER_SIZE;
 	buf_size[2] = BUFFER_SIZE;
+
+	wsr_init_cdeques(nb_threads);
+
 	WSR_TASK_LIST_P cur_tasks;
 
 //	for(i=0;i<3;i++){
@@ -260,6 +315,7 @@ int main(int argc, char *argv[])
 //	DMSG("Out of the loop\n");
 
 		int prev_state = -1, cur_state = 0, next_state = 1;
+		int num_tasks = 0;
 
 //		DMSG("Started recving ready task cur state\n");
 		start_async_read_of_ready_tasks(cur_state);
@@ -275,10 +331,11 @@ int main(int argc, char *argv[])
 
 			start_async_read_of_ready_tasks(next_state);
 
-			cur_tasks = deseralize_tasks(cur_state);
+			cur_tasks = deseralize_tasks(cur_state, &num_tasks);
 
 			if(cur_tasks != NULL)
-				wsr_task_list_execute(cur_tasks);
+				execute_tasks(cur_tasks, num_tasks, nb_threads);
+//				wsr_task_list_execute(cur_tasks);
 			DMSG("Completed the execution of current state tasks\n ");
 
 			wait_till_executed_tasks_transfer_completion(prev_state);
@@ -287,11 +344,12 @@ int main(int argc, char *argv[])
 
 			prev_state = cur_state;
 			cur_state = next_state;
-			next_state =  (next_state+1)%3;
+			next_state =  (next_state+1)%PIPELINE_DEPTH;
 
 			i--;
-			if(!i)
+			if(!i){
                 break;
+			}
 		}
 
 	DMSG("Exited the loop \n");

@@ -11,7 +11,7 @@
 #include "wsr_task.h"
 
 int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf);
-WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int size);
+WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int *size, int *num_tasks);
 
 
 #endif /* WSR_SERALIZE_H_ */

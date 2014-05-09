@@ -3,6 +3,7 @@
 
 #include "wsr_util.h"
 #include "wsr_buffer.h"
+#include "stdatomic.h"
 
 //Task
 typedef struct 
@@ -14,11 +15,8 @@ typedef struct
     //Id of the task
     int id;
 
-    //function pointer of the task to execute
-    void(*task_ptr)(void);
-
     //counter to keep track of state (ready or not) 
-    int sync_counter;
+    atomic_size_t sync_counter;
 
     //total number of dependent tasks
     int num_dep_tasks;
@@ -63,9 +61,7 @@ WSR_TASK_P wsr_task_alloc(int type, int task_id, int sync_counter);
 void wsr_task_free(WSR_TASK_P task, int free_buffers);
 void wsr_task_add_dependent_task(WSR_TASK_P task, WSR_TASK_P dep_task);
 void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf);
-void wsr_task_decrement_sync_counter(WSR_TASK_P task);
-void wsr_task_execute(WSR_TASK_P task);
 void wsr_task_list_execute(WSR_TASK_LIST_P task_list);
-void wsr_update_dep_tasks(WSR_TASK_P task);
-
+void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id);
+void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id);
 #endif

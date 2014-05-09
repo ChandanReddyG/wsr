@@ -35,12 +35,13 @@ wsr_multibin-flags := -w ".*"
 cluster-bin := wsr_cc
 
 # Each *-srcs variable describe sources for binary
-wsr_cc-srcs := wsr_compute_thread.c wsr_buffer.c wsr_seralize.c wsr_task_functions.c wsr_task.c 
+wsr_cc-srcs := wsr_buffer.c wsr_seralize.c wsr_task_functions.c  wsr_cdeque.c wsr_task.c wsr_util.c wsr_compute_thread.c 
 #wsr_cc-srcs :=  wsr_buffer.c wsr_task.c 
 # The io-bin var is used to build groups of var
 io-bin := wsr_io
 
-wsr_io-srcs := wsr_io_thread.c wsr_buffer.c wsr_seralize.c wsr_task_functions.c wsr_task.c wsr_util.c
+wsr_io-srcs := wsr_io_thread.c wsr_buffer.c wsr_seralize.c wsr_task_functions.c wsr_task.c wsr_util.c wsr_cdeque.c 
+
 # Flags can be specified by sources
 wsr_io-cflags := -DCLUSTER_BIN_NAME=\"wsr_cc\"
 
@@ -55,7 +56,7 @@ wsr_host-srcs := tuto_db_host.c common.c compute.c
 include ${K1_TOOLCHAIN_DIR}/share/make/Makefile.mppaipc
 
 run_hw: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 16 1
+	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 1 1 
 
 run_hw_trace: wsr_host_hw wsr_multibin
 	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 1024 8192 64 16 1 ; kill -SIGINT `cat ./k1-trace-util.pid`
