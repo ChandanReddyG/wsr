@@ -12,7 +12,7 @@ static cdeque_p cdeques[MAX_NUM_OF_THREADS];
 
 /* Push element ELEM to the bottom of the deque CDEQUE. Increase the size
    if necessary.  */
- void
+void
 cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 {
 	_PAPI_P0B;
@@ -24,7 +24,7 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 	cbuffer_p buffer = atomic_load_explicit (&cdeque->cbuffer, relaxed);
 
 	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
-	if (bottom >= top + buffer->size)
+	if (bottom > top + buffer->size)
 		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
 
 	cbuffer_set (buffer, bottom, elem, relaxed);
@@ -32,17 +32,18 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 	atomic_store_explicit (&cdeque->bottom, bottom + 1, relaxed);
 
 	_PAPI_P0E;
+
 }
 
- void
+void
 cdeque_push_task(int thread_id, WSR_TASK_P elem)
 {
-	 cdeque_push_bottom(cdeques[thread_id], elem);
+	cdeque_push_bottom(cdeques[thread_id], elem);
 
 }
 
 
- int
+int
 cdeque_try_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 {
 	_PAPI_P0B;
@@ -67,7 +68,7 @@ cdeque_try_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 }
 
 /* Get one task from CDEQUE for execution.  */
- WSR_TASK_P
+WSR_TASK_P
 cdeque_take (cdeque_p cdeque)
 {
 	_PAPI_P1B;
@@ -119,7 +120,7 @@ cdeque_take (cdeque_p cdeque)
 }
 
 /* Steal one elem from deque CDEQUE. return NULL if confict happens.  */
- WSR_TASK_P
+WSR_TASK_P
 cdeque_steal (cdeque_p remote_cdeque)
 {
 	_PAPI_P2B;
@@ -150,7 +151,7 @@ cdeque_steal (cdeque_p remote_cdeque)
 	return elem;
 }
 
- void wsr_init_cdeques(int nb_threads ){
+void wsr_init_cdeques(int nb_threads ){
 
 	num_threads = nb_threads;
 	assert(num_threads <= MAX_NUM_OF_THREADS);
@@ -162,14 +163,20 @@ cdeque_steal (cdeque_p remote_cdeque)
 }
 
 //Add task for task list to the cdeque
- void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list,
+void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list,
 		int num_tasks, int num_threads) {
 
 
 	int i = 0;
 	while(task_list != NULL){
-		if(task_list->task != NULL)
-			cdeque_push_bottom(cdeques[i%num_threads], task_list->task);
+		if(task_list->task != NULL){
+
+			size_t sync_counter = atomic_load_explicit(&task_list->task->sync_counter, relaxed);
+			if(sync_counter == 0){
+				DMSG("Adding task %d to task list\n", task_list->task->id);
+				cdeque_push_bottom(cdeques[i%num_threads], task_list->task);
+			}
+		}
 
 		task_list = task_list->next;
 		i++;
@@ -178,7 +185,7 @@ cdeque_steal (cdeque_p remote_cdeque)
 }
 
 
-  void *wsr_cdeque_execute(void *arg){
+void *wsr_cdeque_execute(void *arg){
 
 	int my_thread_id = ((int *)arg)[0];
 
@@ -191,8 +198,9 @@ cdeque_steal (cdeque_p remote_cdeque)
 
 		if(task != NULL)
 			wsr_execute_a_task(task, my_thread_id);
+
 		else {
-/*
+			/*
 			//my task list is empty
 			//try to steal from others
 			for(i =0;i<2*num_threads; i++){
@@ -213,7 +221,7 @@ cdeque_steal (cdeque_p remote_cdeque)
 			//assume execution is complete and return;
 			if(i==2*num_threads)
 				return 0;
-				*/
+			 */
 			break;
 
 		}

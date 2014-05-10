@@ -24,6 +24,8 @@ typedef struct
     //List of dependent tasks
     void *dep_task_list;
 
+    int *dep_task_ids;
+
     //Time it took to execute
     long time;
 
@@ -64,4 +66,6 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf);
 void wsr_task_list_execute(WSR_TASK_LIST_P task_list);
 void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id);
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id);
+WSR_TASK_P wsr_task_list_search(WSR_TASK_LIST_P task_list, int task_id);
+
 #endif

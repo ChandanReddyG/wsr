@@ -104,6 +104,8 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id){
 
 	wsr_update_dep_tasks(task, thread_id);
 
+	DMSG("Completed the execution of task = %d \n", task->id);
+
 //	task->time = __k1_read_dsu_timestamp() - cpt;
 
 	return ret;
@@ -111,7 +113,7 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id){
 
 WSR_TASK_LIST_P get_reduction_task_list(int cluster_id){
 
-	int task_id = 0;
+	int task_id = 3;
 
 	WSR_TASK_P task = wsr_task_alloc(3, task_id++, 0);
 
@@ -194,6 +196,13 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 		wsr_task_add_dependent_buffer(task, buf);
 
 		wsr_task_list_add(task_list, task);
+
+		WSR_TASK_P red_task = get_reduction_task_list(0)->task;
+
+		wsr_task_add_dependent_task(task, red_task);
+
+		wsr_task_list_add(task_list, red_task);
+
 	}
 
 	return task_list;
