@@ -14,6 +14,8 @@
 //#define BUFFER_SIZE 192
 #define PIPELINE_DEPTH 3
 
+#define EXIT_TASK_ID -3
+
 unsigned long
 convert_str_to_ul(const char *str);
 

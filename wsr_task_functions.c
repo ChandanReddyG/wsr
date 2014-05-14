@@ -1,5 +1,9 @@
 #include "wsr_task_functions.h"
 #include "wsr_task.h"
+#include "wsr_cdeque.h"
+#include "matmul_tasks.h"
+#include "wsr_trace.h"
+
 #include <mppaipc.h>
 
 
@@ -73,11 +77,98 @@ int compute_default(int x){
 	return 0;
 }
 
+WSR_TASK_P wsr_create_exit_task(){
 
-int wsr_execute_a_task(WSR_TASK_P task, int thread_id){
+	WSR_TASK_P task = wsr_task_alloc(EXIT_TASK_ID, EXIT_TASK_ID, 0);
+	return task;
+
+}
+
+WSR_TASK_LIST_P wsr_create_exit_task_list(int num_threads){
+
+	WSR_TASK_LIST_P task_list = wsr_task_list_create(NULL);
+	for(int i =0;i<num_threads;i++)
+		wsr_task_list_add(task_list, wsr_create_exit_task());
+
+	return task_list;
+
+}
+
+#ifdef COMPUTE_CLUSTER
+
+WSR_TASK_P wsr_create_executed_tasks_transfer_task(int state){
+
+	WSR_TASK_P task = wsr_task_alloc(-1, -1, 0);
+	task->param = state;
+	return task;
+}
+
+WSR_TASK_P wsr_create_deseralize_task(int state){
+
+	WSR_TASK_P task = wsr_task_alloc(-2, -2, 0);
+	task->param = state;
+	return task;
+}
+
+int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads){
+
+	wait_till_ready_tasks_transfer_completion(cur_state, thread_id);
+
+	int next_state = (cur_state + 1)%PIPELINE_DEPTH;
+
+	start_async_read_of_ready_tasks(next_state, thread_id);
+
+	int num_tasks = 0;
+	WSR_TASK_LIST_P cur_tasks = deseralize_tasks(cur_state, &num_tasks);
+
+	if(cur_tasks->task->id != EXIT_TASK_ID){
+
+		WSR_TASK_P transfer_task = wsr_create_executed_tasks_transfer_task(cur_state);
+
+		WSR_TASK_LIST_P task_list = cur_tasks;
+		while(task_list != NULL){
+			wsr_task_add_dependent_task(task_list->task, transfer_task);
+			task_list = task_list->next;
+		}
+	}
+
+//		wsr_add_to_single_cdeque(cur_tasks, thread_id);
+		wsr_add_to_cdeque(cur_tasks, thread_id, num_threads);
+
+	return 1;
+}
+
+int wsr_async_trasnfer_executed_task(int cur_state, int thread_id){
+
+	int prev_state = (cur_state -1)%PIPELINE_DEPTH;
+
+	wait_till_executed_tasks_transfer_completion(prev_state, thread_id);
+
+	start_async_write_of_executed_tasks(cur_state, thread_id);
+
+	int next_state = (cur_state +1)%PIPELINE_DEPTH;
+	WSR_TASK_P execute_task = wsr_create_deseralize_task(next_state);
+
+	wsr_add_task_to_cdeque(execute_task, thread_id);
+
+	return 1;
+}
+
+
+int program_exit_task(int thread_id){
+
+	DMSG("Program exit task called\n");
+	DMSG("Exiting the thread %d \n", thread_id);
+
+	return EXIT_TASK_ID;
+
+}
+
+int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 
 	DMSG("Started executing task = %d\n", task->id);
 
+		mppa_tracepoint(wsr, task_execute__in, thread_id, task->id);
 //	int cpt = __k1_read_dsu_timestamp();
 	int ret = -1;
 
@@ -97,6 +188,19 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id){
 		assert(task->buffer_list != NULL);
 		ret = vector_sum(task->buffer_list);
 		break;
+	case -1:
+		ret = wsr_async_trasnfer_executed_task(task->param, thread_id);
+		break;
+	case -2:
+		ret = wsr_task_deseralize_tasks(task->param, thread_id, num_threads);
+		break;
+	case MATMUL_TASK_ID:
+		DMSG("Executing matmul task = %d\n", task->id);
+		ret = block_matrix_multiply_task(task->buffer_list, task->param);
+		break;
+	case EXIT_TASK_ID:
+		ret = program_exit_task( thread_id);
+		break;
 	default:
 		ret = compute_default(0);
 		break;
@@ -104,12 +208,14 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id){
 
 	wsr_update_dep_tasks(task, thread_id);
 
+		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
 	DMSG("Completed the execution of task = %d \n", task->id);
 
 //	task->time = __k1_read_dsu_timestamp() - cpt;
 
 	return ret;
 }
+#endif
 
 WSR_TASK_LIST_P get_reduction_task_list(int cluster_id){
 
@@ -135,38 +241,10 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 
 	int task_id = 0;
 
-	/*
-		WSR_TASK_P task = wsr_task_alloc(4, task_id++, 0);
-
-		int num_elem = 10;
-
-		int *A = malloc(num_elem * sizeof(int));
-		for(int i = 0;i < num_elem; i++)
-			A[i] =12;
-
-		WSR_BUFFER_P buf = wsr_buffer_create(num_elem * sizeof(int), 0, A);
-		 wsr_task_add_dependent_buffer(task, buf);
-
-		int *B = malloc(num_elem * sizeof(int));
-		for(int i = 0;i < num_elem; i++)
-			B[i] =3;
-
-		 buf = wsr_buffer_create(num_elem * sizeof(int), 0, B);
-		 wsr_task_add_dependent_buffer(task, buf);
-
-		int *C = malloc(num_elem * sizeof(int));
-		for(int i = 0;i < num_elem; i++)
-			C[i] =100;
-
-		 buf = wsr_buffer_create(num_elem * sizeof(int), 0, C);
-		 wsr_task_add_dependent_buffer(task, buf);
-
-	WSR_TASK_LIST_P task_list = wsr_task_list_create(task);
-	 */
 
 	WSR_TASK_LIST_P task_list = wsr_task_list_create(NULL);
 
-	for(int i =0;i<1;i++){
+	for(int i =0;i<2;i++){
 
 		int task_id = i;
 
@@ -197,11 +275,11 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 
 		wsr_task_list_add(task_list, task);
 
-		WSR_TASK_P red_task = get_reduction_task_list(0)->task;
-
-		wsr_task_add_dependent_task(task, red_task);
-
-		wsr_task_list_add(task_list, red_task);
+//		WSR_TASK_P red_task = get_reduction_task_list(0)->task;
+//
+//		wsr_task_add_dependent_task(task, red_task);
+//
+//		wsr_task_list_add(task_list, red_task);
 
 	}
 

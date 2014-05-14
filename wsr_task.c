@@ -52,6 +52,29 @@ WSR_TASK_P wsr_task_list_search(WSR_TASK_LIST_P task_list, int task_id){
 	return NULL;
 }
 
+
+WSR_TASK_LIST_P wsr_task_list_append(WSR_TASK_LIST_P task_list1, WSR_TASK_LIST_P task_list2){
+
+	if(task_list1 == NULL && task_list2 == NULL)
+		return NULL;
+
+	if(task_list1 == NULL && task_list2 != NULL)
+		return task_list2;
+
+	if(task_list1 != NULL && task_list2 == NULL)
+		return task_list2;
+
+	WSR_TASK_LIST_P cur_list = task_list1;
+	while(cur_list->next != NULL){
+		cur_list = cur_list->next;
+	}
+
+	cur_list->next = task_list2;
+
+	return task_list1;
+
+}
+
 void wsr_task_list_add(WSR_TASK_LIST_P task_list, WSR_TASK_P task){
 
     assert(task_list != NULL);
@@ -190,6 +213,8 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
     return;
 }
 
+
+#ifdef COMPUTE_CLUSTER
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id){
 
     size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
@@ -225,9 +250,11 @@ void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
 		return;
 
 //	wsr_task_execute(task_list->task);
-	wsr_execute_a_task(task_list->task, 0);
+	wsr_execute_a_task(task_list->task, 0, 1);
 
 	wsr_task_list_execute(task_list->next);
 
 	return;
 }
+
+#endif

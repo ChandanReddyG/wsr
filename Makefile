@@ -18,7 +18,7 @@ cflags := -Wall -I. -std=gnu99 -DMPPA_TRACE_ENABLE
 
 k1-cflags := -g3 -Wall -O3
 
-cluster-cflags := ${k1-cflags} -fopenmp
+cluster-cflags := ${k1-cflags} -fopenmp -DCOMPUTE_CLUSTER
 cluster-lflags := ${k1-lflags} -fopenmp -lgomp
 
 io-cflags := ${k1-cflags} -Wno-float-equal
@@ -35,12 +35,12 @@ wsr_multibin-flags := -w ".*"
 cluster-bin := wsr_cc
 
 # Each *-srcs variable describe sources for binary
-wsr_cc-srcs := wsr_buffer.c wsr_seralize.c wsr_task_functions.c  wsr_cdeque.c wsr_task.c wsr_util.c wsr_compute_thread.c 
+wsr_cc-srcs := wsr_buffer.c wsr_seralize.c wsr_task_functions.c  wsr_cdeque.c wsr_task.c wsr_util.c wsr_compute_thread.c matmul_tasks.c
 #wsr_cc-srcs :=  wsr_buffer.c wsr_task.c 
 # The io-bin var is used to build groups of var
 io-bin := wsr_io
 
-wsr_io-srcs := wsr_io_thread.c wsr_buffer.c wsr_seralize.c wsr_task_functions.c wsr_task.c wsr_util.c wsr_cdeque.c 
+wsr_io-srcs := wsr_io_thread.c wsr_buffer.c wsr_seralize.c wsr_task_functions.c wsr_task.c wsr_util.c matmul_tasks.c
 
 # Flags can be specified by sources
 wsr_io-cflags := -DCLUSTER_BIN_NAME=\"wsr_cc\"
@@ -56,11 +56,12 @@ wsr_host-srcs := tuto_db_host.c common.c compute.c
 include ${K1_TOOLCHAIN_DIR}/share/make/Makefile.mppaipc
 
 run_hw: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 1 1 
+	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 1 2 
 
 run_hw_trace: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 1024 8192 64 16 1 ; kill -SIGINT `cat ./k1-trace-util.pid`
-	${K1_TOOLCHAIN_DIR}/bin/k1-stv -hwtrace $(BUILD_DIR)/wsr_io:$(BIN_DIR)/trace.dump.4 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.0 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.1 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.2 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.3 &
+	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 1024 8192 64 1 2 ; kill -SIGINT `cat ./k1-trace-util.pid`
+	${K1_TOOLCHAIN_DIR}/bin/k1-stv -hwtrace $(BUILD_DIR)/wsr_io:$(BIN_DIR)/trace.dump.4 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.0 #-hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.1 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.2 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.3 &
+	#${K1_TOOLCHAIN_DIR}/bin/k1-stv -hwtrace $(BUILD_DIR)/wsr_io:$(BIN_DIR)/trace.dump.4 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.0 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.1 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.2 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.3 &
 
 run_sim: wsr_host_sim wsr_multibin
 	cd $(BIN_DIR); $(K1_TOOLCHAIN_DIR)/bin/k1-pciesim-runner ./wsr_host_sim 512 1024 64 16 16

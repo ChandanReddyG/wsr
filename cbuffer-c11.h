@@ -89,6 +89,9 @@ static inline cbuffer_p
 cbuffer_grow (cbuffer_p old_cbuffer, size_t bottom, size_t top,
 		cbuffer_atomic_p *pnew)
 {
+
+	assert(0);
+
 	cbuffer_p new_cbuffer = cbuffer_alloc (old_cbuffer->log_size + 1);
 
 	size_t old_buffer_size = old_cbuffer->size;

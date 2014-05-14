@@ -38,6 +38,8 @@ typedef struct
     //list of required data buffers
     WSR_BUFFER_LIST *buffer_list;
 
+    int param;
+
 } WSR_TASK;
 
 typedef  WSR_TASK* WSR_TASK_P;
@@ -67,5 +69,6 @@ void wsr_task_list_execute(WSR_TASK_LIST_P task_list);
 void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id);
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id);
 WSR_TASK_P wsr_task_list_search(WSR_TASK_LIST_P task_list, int task_id);
+WSR_TASK_LIST_P wsr_task_list_append(WSR_TASK_LIST_P task_list1, WSR_TASK_LIST_P task_list2);
 
 #endif

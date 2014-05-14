@@ -1,6 +1,7 @@
 //#include <mppaipc.h>
 #include "wsr_task.h"
 #include "wsr_buffer.h"
+#include "wsr_trace.h"
 
 int wsr_seralize_task_size(WSR_TASK_P task){
 
@@ -43,7 +44,8 @@ char *wsr_deseralize_dep_task_list(WSR_TASK_P task, char*buf){
 	DMSG("Num of dep task of task %d = %d\n", task->id, task->num_dep_tasks);
 
 	task->dep_task_ids = (int *)malloc(task->num_dep_tasks * sizeof(int));
-	assert(task->dep_task_ids != NULL);
+	if(task->num_dep_tasks > 0)
+                assert(task->dep_task_ids != NULL);
 
 	memcpy(task->dep_task_ids, buf, (task->num_dep_tasks * sizeof(int)));
 	buf += (task->num_dep_tasks * sizeof(int));
@@ -65,7 +67,11 @@ void wsr_seralize_data_buffers(WSR_BUFFER_LIST_P data_buffer_list, char *buf){
 	buf += sizeof(int);
 	memcpy(buf, &data_buffer_list->buf_ptr->id, sizeof(int));
 	buf += sizeof(int);
+	DMSG("buffer ptr at seralize = %lu\n", buf);
 	memcpy(buf, data_buffer_list->buf_ptr->buf, size);
+
+//	double *t = (double *)buf;
+//	DMSG("val [0] = %f\n", t[0]);
 
 	if(data_buffer_list->next != NULL)
 		wsr_seralize_data_buffers(data_buffer_list->next, buf+size);
@@ -91,9 +97,10 @@ char *wsr_deseralize_data_buffers(WSR_TASK_P task, char*buf){
 		assert(size > 0);
 		assert(id >= 0);
 
-		int *temp = (int *)buf;
+//		double *temp = (double *)buf;
 
-		DMSG("recv[0] = %d\n", temp[0]);
+//		DMSG("buffer  = %lu \n", buf);
+//		DMSG("recv[0] = %d\n", temp[0]);
 		wsr_buffer_list_add(task->buffer_list,  wsr_buffer_create(size, id, buf));
 		buf += size;
 	}
@@ -153,6 +160,9 @@ void wsr_seralize_task_list(WSR_TASK_LIST_P task_list, char *buf){
 //
 int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
+
+	mppa_tracepoint(wsr, seralize__in);
+
 	DMSG("Serializing task list\n");
 	int num_tasks = 0;
 	int buf_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
@@ -173,6 +183,8 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 	buf += sizeof(int);
 
 	wsr_seralize_task_list(task_list, buf);
+
+	mppa_tracepoint(wsr, seralize__out);
 
 	return  buf_size;
 }
@@ -200,6 +212,7 @@ void wsr_update_dep_task_list(WSR_TASK_LIST_P task_list){
 		}
 		task_list = task_list->next;
 	}
+
 
 }
 

@@ -76,4 +76,6 @@ print_cdeque (cdeque_p cdeque)
   void *wsr_cdeque_execute(void *arg);
  void wsr_init_cdeques(int num_threads);
  void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads);
+void wsr_add_to_single_cdeque(WSR_TASK_LIST_P task_list, int thread_id);
+
 #endif
