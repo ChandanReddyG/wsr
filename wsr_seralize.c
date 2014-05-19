@@ -118,9 +118,9 @@ int wsr_seralize_data_buffers(WSR_BUFFER_LIST_P data_buffer_list, char *buf){
 //	DMSG("val [0] = %f\n", t[0]);
 
 	if(data_buffer_list->next != NULL)
-		return wsr_seralize_data_buffers(data_buffer_list->next, buf+size) + size;
+		return wsr_seralize_data_buffers(data_buffer_list->next, buf+size) + size + 2*sizeof(int);
 	else
-        return size;
+        return size + 2 * sizeof(int);
 
 }
 
@@ -236,7 +236,7 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
     if(num_buffers > 0) 
         buffer_size = wsr_seralize_data_buffers(all_buffers, buf);
 
-	int total_size = buffer_size + task_size;
+	int total_size = buffer_size + task_size + sizeof(int);
 	assert(total_size <= BUFFER_SIZE);
 	DMSG("buf_size  = %d\n", total_size);
 	memcpy(begin, &total_size, sizeof(int));
