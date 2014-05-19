@@ -3,6 +3,8 @@
 #include "wsr_task.h"
 #include "wsr_task_functions.h"
 #include "wsr_cdeque.h"
+#define IS_DEBUG 0
+
 
 WSR_TASK_LIST_P  wsr_task_list_create(WSR_TASK_P task){
 

@@ -3,6 +3,8 @@
 #include "wsr_buffer.h"
 //#include <mppaipc.h>
 
+#define IS_DEBUG 0
+
 WSR_BUFFER_P wsr_buffer_alloc(int size, int id){
 
     assert(size > 0);
@@ -80,7 +82,7 @@ void wsr_buffer_list_free(WSR_BUFFER_LIST_P buffer_list, int free_buffers){
 
 void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
-	DMSG("adding buffer %d to the list\n", buf->id);
+	//DMSG("adding buffer %d to the list\n", buf->id);
 
     assert(buffer_list != NULL);
 
@@ -96,7 +98,7 @@ void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
     buffer_list->next = wsr_buffer_list_create(buf);
 
-    DMSG("Added\n");
+    //DMSG("Added\n");
 
     return;
 }
@@ -104,7 +106,7 @@ void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
 WSR_BUFFER_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, int buf_id){
 
-	DMSG("Searching for buffer %d \n", buf_id);
+	//DMSG("Searching for buffer %d \n", buf_id);
 
     while(buffer_list != NULL){
         if(buffer_list->buf_ptr!= NULL){
@@ -116,7 +118,7 @@ WSR_BUFFER_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, int buf_id){
         buffer_list = buffer_list->next;
     }
 
-    DMSG("not found\n");
+    //DMSG("not found\n");
 
     return NULL;
 }

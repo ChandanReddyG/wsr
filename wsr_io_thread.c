@@ -22,6 +22,7 @@
 #include "wsr_trace.h"
 
 #define ALIGN_MATRIX 1024 * 8
+#define IS_DEBUG 0
 
 // Number of clusters
 static unsigned long nb_clusters;
@@ -269,7 +270,11 @@ void *service_cc(void *arg){
 //
 
 
-	i = GLOBAL_MATRIX_SIZE/BLOCK_SIZE;
+	int num_blocks = GLOBAL_MATRIX_SIZE / BLOCK_SIZE;
+	int chunk_size = num_blocks / nb_clusters;
+
+    i = chunk_size;
+    i = 2;
 	int iter = 0;
     int num_tasks = 0, d_size = 0;
 	while(1){
@@ -283,7 +288,7 @@ void *service_cc(void *arg){
 		if(task_list == NULL)
 			DMSG("task_list is null\n");
 
-		size = wsr_serialize_tasks(task_list, buf[cur_state]);
+        size = wsr_serialize_tasks(task_list, buf[cur_state]);
 
 		//Receive the completed tasks of prev state
 		if(prev_state>-1){
@@ -473,10 +478,6 @@ int main(int argc, char **argv) {
 
 	init_matrix();
 
-	//verify_matmul_result();
-
-    //return 0;
-
 
 	DMSG(" Spawn all compute clusters\n");
 	for (int i = 0; i < nb_clusters; i++) {
@@ -554,9 +555,9 @@ int main(int argc, char **argv) {
 
 	res = verify_matmul_result();
 	if(res)
-		DMSG("Output match\n");
+		printf("Output match\n");
 	else
-		DMSG("Output does not match\n");
+		printf("Output does not match\n");
 
 	mppa_tracepoint(wsr, main__out);
 

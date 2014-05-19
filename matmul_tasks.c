@@ -9,6 +9,8 @@
 #include "matmul_tasks.h"
 #include "wsr_task.h"
 
+#define IS_DEBUG 0
+
 static double *a, *b, *c, *d;
 
 void
@@ -57,16 +59,16 @@ int block_matrix_multiply_task(WSR_BUFFER_LIST_P buffer_list, int block_size){
 	assert((num_elem_a == num_elem_b) && (num_elem_a== num_elem_c));
 
     DMSG("matrix a \n");
-	print_matrix(block_size, a);
+//	print_matrix(block_size, a);
     DMSG("matrix b \n");
-	print_matrix(block_size, b);
+//	print_matrix(block_size, b);
     DMSG("matrix c \n");
-	print_matrix(block_size, c);
+//	print_matrix(block_size, c);
 
 	block_matrix_multiply(block_size, a, b, c);
 
     DMSG("matrix c after task execution\n");
-	print_matrix(block_size, c);
+//	print_matrix(block_size, c);
     
 	return 0;
 }
@@ -102,7 +104,7 @@ void copy_back_block_matrix(double *a, char  *block_a, int a1, int a2){
             col = a2 * BLOCK_SIZE + j;
 			a_temp = 	&(a[row * GLOBAL_MATRIX_SIZE + col]);
 			memcpy(a_temp, block_a, sizeof(double));
-            DMSG("C[%d][%d] = %f \n", row, col, a[row*GLOBAL_MATRIX_SIZE + col]);
+//            DMSG("C[%d][%d] = %f \n", row, col, a[row*GLOBAL_MATRIX_SIZE + col]);
 			block_a += sizeof(double);
 		}
 	}
@@ -141,7 +143,7 @@ WSR_TASK_P create_block_matmul_task(int a1, int a2, int b1, int b2, int c1, int 
 	copy_block_matrix(a, block_a, a1, a2);
     buf_id = A_ID * total_buffers + a1 * num_buffers_per_row + a2; 
     DMSG("Buf id of A buffer with a1 = %d a2 = %d, id = %d\n", a1, a2, buf_id);
-    print_matrix(BLOCK_SIZE, block_a);
+//    print_matrix(BLOCK_SIZE, block_a);
 	WSR_BUFFER_P a_buf = wsr_buffer_create(block_matrix_size, buf_id, block_a);
 	wsr_task_add_dependent_buffer(task, a_buf);
 
@@ -150,7 +152,7 @@ WSR_TASK_P create_block_matmul_task(int a1, int a2, int b1, int b2, int c1, int 
 	copy_block_matrix(b, block_b, b1, b2);
     buf_id = B_ID * total_buffers + b1 * num_buffers_per_row + b2; 
     DMSG("Buf id of B buffer with b1 = %d b2 = %d, id = %d\n", b1, b2, buf_id);
-    print_matrix(BLOCK_SIZE, block_b);
+//    print_matrix(BLOCK_SIZE, block_b);
 	WSR_BUFFER_P b_buf = wsr_buffer_create(block_matrix_size, buf_id, block_b);
 	wsr_task_add_dependent_buffer(task, b_buf);
 
@@ -253,7 +255,7 @@ void copy_back_output(WSR_TASK_LIST_P task_list, int cluster_id, int num_cluster
 
 	int  c1 = cluster_id * chunk_size + cur_iteration;
 
-    print_matrix(GLOBAL_MATRIX_SIZE, c);
+//    print_matrix(GLOBAL_MATRIX_SIZE, c);
 	for(int i = 0;  i < num_blocks; i++){
 
 
@@ -263,7 +265,7 @@ void copy_back_output(WSR_TASK_LIST_P task_list, int cluster_id, int num_cluster
         DMSG("Copying back C1 = %d, c2 = %d\n", c1, i);
 		copy_back_block_matrix(c, c_buf->buf, c1, i);
 		DMSG("Copy done\n");
-        print_matrix(GLOBAL_MATRIX_SIZE, c);
+//        print_matrix(GLOBAL_MATRIX_SIZE, c);
 		DMSG("\n\n");
 
 		for(int j = 0; j<num_blocks -1;j++){
@@ -303,17 +305,18 @@ void print_matrix(int size, double *a){
 			printf("%f\t", a[i*size + j]);
 		printf("\n");
 	}
+#  if IS_DEBUG == 1
+#endif
 }
 
 int verify_matmul_result(){
 
-	print_matrix(GLOBAL_MATRIX_SIZE, a);
-	DMSG("C = \n");
+//	printf("C = \n");
 	print_matrix(GLOBAL_MATRIX_SIZE, c);
 
 	block_matrix_multiply(GLOBAL_MATRIX_SIZE, a, b, d);
 
-	DMSG("D = \n");
+//	printf("D = \n");
 	print_matrix(GLOBAL_MATRIX_SIZE, d);
 
 	return compare_matrices(GLOBAL_MATRIX_SIZE, c,d);

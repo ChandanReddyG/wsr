@@ -6,6 +6,7 @@
 
 #include <mppaipc.h>
 
+#define IS_DEBUG 0
 
 int compute0(int x){
 

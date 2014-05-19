@@ -6,7 +6,7 @@
 #include "wsr_task.h"
 #include "wsr_trace.h"
 
-
+#define IS_DEBUG 0
 #define MAX_NUM_OF_THREADS 16
 static int num_threads = 1;
 static cdeque_p cdeques[MAX_NUM_OF_THREADS];
@@ -18,13 +18,13 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 {
 	_PAPI_P0B;
 
-	mppa_tracepoint(wsr, atomic_load__in);
+//	mppa_tracepoint(wsr, atomic_load__in);
 	size_t bottom = atomic_load_explicit (&cdeque->bottom, relaxed);
-	mppa_tracepoint(wsr, atomic_load__out);
+//	mppa_tracepoint(wsr, atomic_load__out);
 
-	mppa_tracepoint(wsr, atomic_load__in);
+//	mppa_tracepoint(wsr, atomic_load__in);
 	size_t top = atomic_load_explicit (&cdeque->top, acquire);
-	mppa_tracepoint(wsr, atomic_load__out);
+//	mppa_tracepoint(wsr, atomic_load__out);
 
 	cbuffer_p buffer = atomic_load_explicit (&cdeque->cbuffer, relaxed);
 
@@ -32,14 +32,14 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 
 	if((bottom + 1)%buffer->size == top){
 //		DMSG("resize is getting called\n");
-		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
+//		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
 	}
 
 	cbuffer_set (buffer, bottom, elem, relaxed);
 
-	mppa_tracepoint(wsr, atomic_store__in);
+//	mppa_tracepoint(wsr, atomic_store__in);
 	atomic_store_explicit (&cdeque->bottom, (bottom + 1)%buffer->size, relaxed);
-	mppa_tracepoint(wsr, atomic_store__out);
+//	mppa_tracepoint(wsr, atomic_store__out);
 
 /*
 	if (bottom > top + buffer->size) {
@@ -101,9 +101,9 @@ cdeque_take (cdeque_p cdeque)
 	cbuffer_p buffer;
 
 
-	mppa_tracepoint(wsr, atomic_load__in);
+//	mppa_tracepoint(wsr, atomic_load__in);
 	bottom = atomic_load_explicit (&cdeque->bottom, relaxed);
-	mppa_tracepoint(wsr, atomic_load__out);
+//	mppa_tracepoint(wsr, atomic_load__out);
 	top = atomic_load_explicit (&cdeque->top, relaxed);
 
 	if(bottom == top){
@@ -115,11 +115,11 @@ cdeque_take (cdeque_p cdeque)
 
 	task = cbuffer_get (buffer, (bottom -1)%buffer->size , relaxed);
 
-	mppa_tracepoint(wsr, atomic_CAS__in);
+//	mppa_tracepoint(wsr, atomic_CAS__in);
 	if (!atomic_compare_exchange_strong_explicit (&cdeque->bottom, &bottom,
 			(bottom- 1)%buffer->size, seq_cst, relaxed))
 		task = NULL;
-	mppa_tracepoint(wsr, atomic_CAS__out);
+//	mppa_tracepoint(wsr, atomic_CAS__out);
 
 
 	return task;
@@ -208,7 +208,7 @@ void wsr_init_cdeques(int nb_threads ){
 	DMSG("Nb threads = %d\n", num_threads);
 	assert(num_threads <= MAX_NUM_OF_THREADS);
 	for(int i =0;i<num_threads;i++)
-		cdeques[i] =  cdeque_alloc(6);
+		cdeques[i] =  cdeque_alloc(7);
 
 	return;
 
@@ -271,7 +271,7 @@ void *wsr_cdeque_execute(void *arg){
 
 	int my_thread_id = ((int *)arg)[0];
 
-//	DMSG("thread %d started\n", my_thread_id);
+	DMSG("thread %d started\n", my_thread_id);
 
 	int i = 0;
 	cdeque_p my_cdeque = cdeques[my_thread_id];
@@ -282,7 +282,7 @@ void *wsr_cdeque_execute(void *arg){
 		task = cdeque_take(my_cdeque);
 
 		if(task != NULL){
-//                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
+                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
 			int ret = wsr_execute_a_task(task, my_thread_id);
 
 			if(ret == EXIT_TASK_ID)
@@ -291,6 +291,7 @@ void *wsr_cdeque_execute(void *arg){
 
 		else {
 
+			/*
 //                DMSG("thread %d take failed \n", my_thread_id);
 
 
@@ -318,6 +319,8 @@ void *wsr_cdeque_execute(void *arg){
 				cdeque_push_bottom(my_cdeque, task);
 //			else
 //				sleep(0.001);
+ * */
+				sleep(0.001);
 		}
 
 	}

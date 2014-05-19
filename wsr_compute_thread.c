@@ -11,6 +11,7 @@
 #include "wsr_seralize.h"
 #include "wsr_trace.h"
 
+
 // Global Variables
 
 //ID of compute cluster
@@ -78,7 +79,7 @@ mppa_init_barrier(const char *sync_io_to_clusters_path,
 static int
 mppa_barrier(int sync_io_to_cluster_fd, int sync_clusters_to_io_fd)
 {
-	DMSG("[Cluster %d] mppa_barrier...", mppa_getpid());
+	//DMSG("[Cluster %d] mppa_barrier...", mppa_getpid());
 	int rank = mppa_getpid();
 	long long mask = 1ULL << rank;
 	if (mppa_write(sync_clusters_to_io_fd, &mask, sizeof(mask)) != sizeof(mask)) {
@@ -92,7 +93,7 @@ mppa_barrier(int sync_io_to_cluster_fd, int sync_clusters_to_io_fd)
 		return 1;
 	}
 
-	DMSG("done\n");
+	//DMSG("done\n");
 	return 0;
 }
 
@@ -116,7 +117,7 @@ void start_async_read_of_ready_tasks(int state, int thread_id){
 	mppa_aiocb_set_trigger(&io_to_cc_aiocb[state], 1);
 	int status = mppa_aio_read(&io_to_cc_aiocb[state]);
 	assert(status == 0);
-	DMSG("Starting the async read of ready task for cur_state = %d ret = %d\n", state, status);
+	//DMSG("Starting the async read of ready task for cur_state = %d ret = %d\n", state, status);
 
 	return;
 }
@@ -129,11 +130,11 @@ void wait_till_ready_tasks_transfer_completion(int state, int thread_id){
 
 	mppa_tracepoint(wsr, wait_till_ready_task_transfer_completion__in, thread_id, state);
 
-	DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
+	//DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
 	int status = mppa_aio_wait(&io_to_cc_aiocb[state]);
 	assert(status == buf_size[state]);
 	mppa_tracepoint(wsr, wait_till_ready_task_transfer_completion__out, thread_id, state);
-	DMSG(" the ready task transfer is complete from io to cc for state = %d, ret = %d\n", state, status);
+	//DMSG(" the ready task transfer is complete from io to cc for state = %d, ret = %d\n", state, status);
 	return;
 }
 
@@ -147,12 +148,12 @@ void start_async_write_of_executed_tasks(int state, int thread_id){
 	mppa_tracepoint(wsr, start_async_write_of_executed_tasks, thread_id, state);
 
 	assert(buf_size[state] >= 0);
-	DMSG("Sending buf size = %d\n", buf_size[state]);
+	//DMSG("Sending buf size = %d\n", buf_size[state]);
 	mppa_aiocb_ctor(&cc_to_io_aiocb[state], cc_to_io_fd[state], buf[state], buf_size[state]);
 	mppa_aiocb_set_pwrite(&cc_to_io_aiocb[state], buf[state], buf_size[state], 0);
 	int status = mppa_aio_write(&cc_to_io_aiocb[state]);
 	assert(status == 0);
-	DMSG("Starting the async write of executed task for cur_state = %d, ret = %d\n", state, status);
+	//DMSG("Starting the async write of executed task for cur_state = %d, ret = %d\n", state, status);
 
 	return;
 }
@@ -160,7 +161,7 @@ void start_async_write_of_executed_tasks(int state, int thread_id){
 //Wait till the transfer is complete
 void wait_till_executed_tasks_transfer_completion(int state, int thread_id){
 
-	DMSG("waiting for the executed task transfer to complete for state = %d\n", state);
+	//DMSG("waiting for the executed task transfer to complete for state = %d\n", state);
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
@@ -169,13 +170,13 @@ void wait_till_executed_tasks_transfer_completion(int state, int thread_id){
 	int status = mppa_aio_wait(&cc_to_io_aiocb[state]);
 	assert(status == buf_size[state]);
 	mppa_tracepoint(wsr, wait_till_executed_task_transfer_completion__out, thread_id, state);
-	DMSG(" the executed task transfer is complete from cc to io for state = %d, ret = %d\n", state, status);
+	//DMSG(" the executed task transfer is complete from cc to io for state = %d, ret = %d\n", state, status);
 	return;
 }
 
 WSR_TASK_LIST_P deseralize_tasks(int state, int *num_tasks){
 
-	DMSG("deserialing the tasks list\n");
+	//DMSG("deserialing the tasks list\n");
 
 	if(state<0 || state > PIPELINE_DEPTH)
 		return NULL;
@@ -214,7 +215,7 @@ void execute_tasks(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads){
 				exit(-1);
 			}
 		}
-		DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
+		//DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
 	}
 
 	int parm = 0;
@@ -237,7 +238,7 @@ int main(int argc, char *argv[])
 {
 	cluster_id = mppa_getpid();
 
-	DMSG("Started proc on cluster %lu\n", cluster_id);
+	//DMSG("Started proc on cluster %lu\n", cluster_id);
 
 	mppa_tracepoint(wsr, cc_main__in, cluster_id);
 
@@ -272,7 +273,7 @@ int main(int argc, char *argv[])
 
 	mppa_tracepoint(wsr,cc_portal_open__in, cluster_id);
 
-	DMSG("Opening the barrier\n");
+	//DMSG("Opening the barrier\n");
 	int sync_io_to_cc_fd = -1;
 	int sync_cc_to_io_fd = -1;
 	if (mppa_init_barrier(sync_io_to_cc_path, sync_cc_to_io_path, &sync_io_to_cc_fd,
@@ -281,18 +282,18 @@ int main(int argc, char *argv[])
 		mppa_exit(1);
 	}
 
-	DMSG("Opening the io to cc portals\n");
+	//DMSG("Opening the io to cc portals\n");
 	for(i=0;i<PIPELINE_DEPTH;i++){
-		DMSG("Open portal %s\n", io_to_cc_path[i]);
+		//DMSG("Open portal %s\n", io_to_cc_path[i]);
 		if((io_to_cc_fd[i] = mppa_open(io_to_cc_path[i], O_RDONLY)) < 0) {
 			EMSG("Open portal failed for %s\n", io_to_cc_path[i]);
 			mppa_exit(1);
 		}
 	}
 
-	DMSG("Opening the cc to io portals\n");
+	//DMSG("Opening the cc to io portals\n");
 	for(i=0;i<PIPELINE_DEPTH;i++){
-		DMSG("Open portal %s\n", cc_to_io_path[i]);
+		//DMSG("Open portal %s\n", cc_to_io_path[i]);
 		if((cc_to_io_fd[i] = mppa_open(cc_to_io_path[i], O_WRONLY)) < 0) {
 			EMSG("Open portal failed for %s\n", cc_to_io_path[i]);
 			mppa_exit(1);
@@ -302,7 +303,7 @@ int main(int argc, char *argv[])
 	mppa_tracepoint(wsr,cc_portal_open__out, cluster_id);
 
 	mppa_tracepoint(wsr,cc_sync__in, cluster_id);
-	DMSG("sync with io cluster complete\n");
+	//DMSG("sync with io cluster complete\n");
 	if (mppa_barrier(sync_io_to_cc_fd, sync_cc_to_io_fd)) {
 		EMSG("mppa_barrier failed\n");
 		mppa_exit(1);
@@ -340,14 +341,14 @@ int main(int argc, char *argv[])
 //		int prev_state = -1, cur_state = 0, next_state = 1;
 //		int num_tasks = 0;
 //
-////		DMSG("Started recving ready task cur state\n");
+////		//DMSG("Started recving ready task cur state\n");
 //		start_async_read_of_ready_tasks(cur_state);
 //
 //		i = 1;
 //		while(1){
 //
-//			DMSG("--------------------------------------------------------------------------\n");
-//			DMSG("Started the loop prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+//			//DMSG("--------------------------------------------------------------------------\n");
+//			//DMSG("Started the loop prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
 //					next_state);
 //
 //			wait_till_ready_tasks_transfer_completion(cur_state);
@@ -359,7 +360,7 @@ int main(int argc, char *argv[])
 //			if(cur_tasks != NULL)
 //				execute_tasks(cur_tasks, num_tasks, nb_threads);
 //
-//			DMSG("Completed the execution of current state tasks\n ");
+//			//DMSG("Completed the execution of current state tasks\n ");
 //
 //			wait_till_executed_tasks_transfer_completion(prev_state);
 //
@@ -375,7 +376,7 @@ int main(int argc, char *argv[])
 //			}
 //		}
 
-			DMSG("Started receiving ready task cur state\n");
+			//DMSG("Started receiving ready task cur state\n");
 			start_async_read_of_ready_tasks(0, cluster_id);
 
 			wsr_task_deseralize_tasks(0, 0, nb_threads);
@@ -401,7 +402,7 @@ int main(int argc, char *argv[])
 						exit(-1);
 					}
 				}
-				DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
+				//DMSG("pthread create launched thread %d, locally called %d\n", (int) t[i], i);
 			}
 
 			int parm = 0;
@@ -421,7 +422,7 @@ int main(int argc, char *argv[])
 
 
 
-	DMSG("Exited the loop \n");
+	//DMSG("Exited the loop \n");
 	for(i=0;i<PIPELINE_DEPTH;i++)
 		free(buf[i]);
 

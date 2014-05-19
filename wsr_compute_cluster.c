@@ -10,6 +10,8 @@
 #include "tuto_db.h"
 #include "tuto_db_trace.h"
 
+#define IS_DEBUG 0
+
 //////////////////////////////////
 // Global variables declaration //
 //////////////////////////////////
