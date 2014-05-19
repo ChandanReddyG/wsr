@@ -18,21 +18,30 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 {
 	_PAPI_P0B;
 
+	mppa_tracepoint(wsr, atomic_load__in);
 	size_t bottom = atomic_load_explicit (&cdeque->bottom, relaxed);
+	mppa_tracepoint(wsr, atomic_load__out);
+
+	mppa_tracepoint(wsr, atomic_load__in);
 	size_t top = atomic_load_explicit (&cdeque->top, acquire);
+	mppa_tracepoint(wsr, atomic_load__out);
 
 	cbuffer_p buffer = atomic_load_explicit (&cdeque->cbuffer, relaxed);
 
-	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
+//	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
 
-//	if((bottom + 1)%buffer->size == top){
+	if((bottom + 1)%buffer->size == top){
 //		DMSG("resize is getting called\n");
-//		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
-//	}
-//
-//	cbuffer_set (buffer, bottom, elem, relaxed);
-//	atomic_store_explicit (&cdeque->bottom, (bottom + 1)%buffer->size, relaxed);
+		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
+	}
 
+	cbuffer_set (buffer, bottom, elem, relaxed);
+
+	mppa_tracepoint(wsr, atomic_store__in);
+	atomic_store_explicit (&cdeque->bottom, (bottom + 1)%buffer->size, relaxed);
+	mppa_tracepoint(wsr, atomic_store__out);
+
+/*
 	if (bottom > top + buffer->size) {
 		DMSG("resize is getting called\n");
 		buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
@@ -41,6 +50,7 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 	cbuffer_set (buffer, bottom, elem, relaxed);
 	thread_fence (release);
 	atomic_store_explicit (&cdeque->bottom, bottom + 1, relaxed);
+	*/
 
 	_PAPI_P0E;
 
@@ -66,8 +76,9 @@ cdeque_try_push_bottom (cdeque_p cdeque, WSR_TASK_P elem)
 
 	cbuffer_p buffer = atomic_load_explicit (&cdeque->cbuffer, relaxed);
 
-	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
+//	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
 	if (bottom >= top + buffer->size){
+//		DMSG("Buffer grow is called\n");
 		//buffer = cbuffer_grow (buffer, bottom, top, &cdeque->cbuffer);
 		return 0;
 	}
@@ -89,7 +100,10 @@ cdeque_take (cdeque_p cdeque)
 	WSR_TASK_P task;
 	cbuffer_p buffer;
 
+
+	mppa_tracepoint(wsr, atomic_load__in);
 	bottom = atomic_load_explicit (&cdeque->bottom, relaxed);
+	mppa_tracepoint(wsr, atomic_load__out);
 	top = atomic_load_explicit (&cdeque->top, relaxed);
 
 	if(bottom == top){
@@ -101,12 +115,15 @@ cdeque_take (cdeque_p cdeque)
 
 	task = cbuffer_get (buffer, (bottom -1)%buffer->size , relaxed);
 
+	mppa_tracepoint(wsr, atomic_CAS__in);
 	if (!atomic_compare_exchange_strong_explicit (&cdeque->bottom, &bottom,
 			(bottom- 1)%buffer->size, seq_cst, relaxed))
 		task = NULL;
+	mppa_tracepoint(wsr, atomic_CAS__out);
 
 
 	return task;
+
 
 	if (atomic_load_explicit (&cdeque->bottom, relaxed) == 0)
 	{
@@ -168,7 +185,7 @@ cdeque_steal (cdeque_p remote_cdeque)
 		return NULL;
 	}
 
-	DMSG ("cdeque_steal with bottom %lu, top %lu \n", bottom, top);
+//	DMSG ("cdeque_steal with bottom %lu, top %lu \n", bottom, top);
 
 	buffer = atomic_load_explicit (&remote_cdeque->cbuffer, relaxed);
 
@@ -178,8 +195,8 @@ cdeque_steal (cdeque_p remote_cdeque)
 			(top + 1)%buffer->size, seq_cst, relaxed))
 		elem = NULL;
 
-	if(elem != NULL)
-		DMSG("Steal successfull\n");
+//	if(elem != NULL)
+//		DMSG("Steal successfull\n");
 
 	_PAPI_P2E;
 	return elem;
@@ -201,7 +218,7 @@ void wsr_add_task_to_cdeque(WSR_TASK_P task, int thread_id){
 
 	size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
 	if(sync_counter == 0){
-		DMSG("Adding task %d to task list\n", task->id);
+//		DMSG("Adding task %d to task list\n", task->id);
 		cdeque_push_bottom(cdeques[thread_id],task);
 	}
 
@@ -219,7 +236,7 @@ void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list,
 
 			size_t sync_counter = atomic_load_explicit(&task_list->task->sync_counter, relaxed);
 			if(sync_counter == 0){
-				DMSG("Adding task %d to task list for threads %d, num threads = %d\n", task_list->task->id, i%num_threads, num_threads);
+//				DMSG("Adding task %d to task list for threads %d, num threads = %d\n", task_list->task->id, i%num_threads, num_threads);
 				cdeque_push_bottom(cdeques[i%num_threads], task_list->task);
 			}
 		}
@@ -239,7 +256,7 @@ void wsr_add_to_single_cdeque(WSR_TASK_LIST_P task_list, int thread_id){
 
 			size_t sync_counter = atomic_load_explicit(&task_list->task->sync_counter, relaxed);
 			if(sync_counter == 0){
-				DMSG("Adding task %d to task list\n", task_list->task->id);
+//				DMSG("Adding task %d to task list\n", task_list->task->id);
 				cdeque_push_bottom(cdeques[thread_id], task_list->task);
 			}
 		}
@@ -254,7 +271,7 @@ void *wsr_cdeque_execute(void *arg){
 
 	int my_thread_id = ((int *)arg)[0];
 
-	DMSG("thread %d started\n", my_thread_id);
+//	DMSG("thread %d started\n", my_thread_id);
 
 	int i = 0;
 	cdeque_p my_cdeque = cdeques[my_thread_id];
@@ -265,7 +282,7 @@ void *wsr_cdeque_execute(void *arg){
 		task = cdeque_take(my_cdeque);
 
 		if(task != NULL){
-                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
+//                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
 			int ret = wsr_execute_a_task(task, my_thread_id);
 
 			if(ret == EXIT_TASK_ID)
@@ -274,10 +291,10 @@ void *wsr_cdeque_execute(void *arg){
 
 		else {
 
-                DMSG("thread %d take failed \n", my_thread_id);
+//                DMSG("thread %d take failed \n", my_thread_id);
 
 
-			DMSG("thread %d deque is empty trying to steal \n", my_thread_id);
+//			DMSG("thread %d deque is empty trying to steal \n", my_thread_id);
 			//my task list is empty
 			//			while(task == NULL){
 			//try to steal from others
@@ -286,7 +303,7 @@ void *wsr_cdeque_execute(void *arg){
 				victim =  rand() % num_threads;
 			}
 
-			DMSG("Thread %d, trying to steal from %d\n", my_thread_id, victim);
+//			DMSG("Thread %d, trying to steal from %d\n", my_thread_id, victim);
 
 			mppa_tracepoint(wsr, try_steal__in, my_thread_id, victim);
 			cdeque_p victim_dqueue = cdeques[victim];
@@ -294,13 +311,13 @@ void *wsr_cdeque_execute(void *arg){
 			//			}
 			mppa_tracepoint(wsr, try_steal__out, my_thread_id, victim);
 			i++;
-			if(i == 100)
-				break;
+//			if(i == 100)
+//				break;
 
 			if(task != NULL)
 				cdeque_push_bottom(my_cdeque, task);
-			else
-				sleep(0.001);
+//			else
+//				sleep(0.001);
 		}
 
 	}

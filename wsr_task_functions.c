@@ -195,7 +195,7 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 		ret = wsr_task_deseralize_tasks(task->param, thread_id, num_threads);
 		break;
 	case MATMUL_TASK_ID:
-		DMSG("Executing matmul task = %d\n", task->id);
+//		DMSG("Executing matmul task = %d\n", task->id);
 		ret = block_matrix_multiply_task(task->buffer_list, task->param);
 		break;
 	case EXIT_TASK_ID:
@@ -209,7 +209,7 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 	wsr_update_dep_tasks(task, thread_id);
 
 		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
-	DMSG("Completed the execution of task = %d \n", task->id);
+//	DMSG("Completed the execution of task = %d \n", task->id);
 
 //	task->time = __k1_read_dsu_timestamp() - cpt;
 

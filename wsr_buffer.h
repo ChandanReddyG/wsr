@@ -44,8 +44,8 @@ void wsr_buffer_free(WSR_BUFFER_P buf);
 WSR_BUFFER_LIST_P wsr_buffer_list_create(WSR_BUFFER_P buf);
 void wsr_buffer_list_free(WSR_BUFFER_LIST_P buffer_list, int free_buffers);
 void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf);
-WSR_BUFFER_LIST_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf);
+WSR_BUFFER_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, int buf_id);
 void wsr_buffer_list_remove(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf);
-
+int wsr_buffer_list_num_elemnts(WSR_BUFFER_LIST_P buffer_list);
 
 #endif

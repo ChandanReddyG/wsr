@@ -236,26 +236,42 @@ void *service_cc(void *arg){
 
 	int prev_state = -1, cur_state = 0, next_state = 1;
 
+//	char *t;
+//		posix_memalign((void**)&(t), 32, 2 * sizeof(double) + sizeof(WSR_TASK) );
+//
+////		t += sizeof(WSR_TASK);
+//
+//		double *d = (double *)t;
+//		d[0] = 1.2;
+//		d[1] = 3.5;
+//
+//		t += sizeof(double);
+//
+//		double q = 0;
+//		memcpy(&q, t, sizeof(double));
+//		DMSG("d 0 = %f\n", q);
+//		return 0;
 
+//
+//		double *s = (double *)t;
+//		DMSG("d 0 = %f\n", s[0]);
+//		DMSG("d 1 = %f\n", s[1]);
+
+//		char *t = memalign(64, 2 * sizeof(double) + sizeof(int) );
 
 //	char *t  = malloc(2 * sizeof(double) + sizeof(int));
-//
-//	int *in = (int *)t;
+
+//	long *in = (long *)t;
 //	in[0] = 3.0;
 //
-//	t += sizeof(int);
+//	t += sizeof(long);
 //
 //
-//	double *d = (double *)t;
-//	d[0] = 1.2;
-//	d[1] = 2.3;
-//
-//	double *s = (double *)t;
-//	DMSG("d 0 = %f\n", s[0]);
-//	DMSG("d 1 = %f\n", s[1]);
 
-	i = 1;
+
+	i = GLOBAL_MATRIX_SIZE/BLOCK_SIZE;
 	int iter = 0;
+    int num_tasks = 0, d_size = 0;
 	while(1){
 
 		DMSG("--------------------------------------------------------------------------\n");
@@ -272,9 +288,10 @@ void *service_cc(void *arg){
 		//Receive the completed tasks of prev state
 		if(prev_state>-1){
 			wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
-			int num_tasks = 0, d_size = 0;
 			WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size, num_tasks);
-//			copy_back_output(prev_task_list, cluster_id, nb_clusters, iter -1);
+			copy_back_output(prev_task_list, cluster_id, nb_clusters, iter -1);
+
+            //verify_matmul_result();
 
 			i--;
 			if(!i)
@@ -313,7 +330,7 @@ void *service_cc(void *arg){
 
 
 	mppa_tracepoint(wsr, thread__out, cluster_id);
-	//Verify the output
+
 	ret = 1;
 	pthread_exit((void *)&ret);
 	return NULL;
@@ -454,6 +471,13 @@ int main(int argc, char **argv) {
 		mppa_exit(1);
 	}
 
+	init_matrix();
+
+	//verify_matmul_result();
+
+    //return 0;
+
+
 	DMSG(" Spawn all compute clusters\n");
 	for (int i = 0; i < nb_clusters; i++) {
 		// [i%BSP_NB_DMA_IO] ensures independence between the group of clusters
@@ -468,7 +492,7 @@ int main(int argc, char **argv) {
 		DMSG("%d spawned : %d\n", i, pids[i]);
 	}
 
-	init_matrix();
+
 
 	mppa_tracepoint(wsr, sync__in);
 	// Synchronization between all Clusters and IO
@@ -527,6 +551,12 @@ int main(int argc, char **argv) {
 			mppa_exit(1);;
 		}
 	}
+
+	res = verify_matmul_result();
+	if(res)
+		DMSG("Output match\n");
+	else
+		DMSG("Output does not match\n");
 
 	mppa_tracepoint(wsr, main__out);
 

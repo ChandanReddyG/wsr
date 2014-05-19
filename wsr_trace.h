@@ -92,6 +92,15 @@ MPPA_DECLARE_TRACEPOINT(wsr, wait_till_ready_task_transfer_completion__in, ( MPP
           MPPA_DECLARE_TRACEPOINT(wsr, try_steal__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
                   MPPA_TRACEPOINT_DEC_FIELD(int, victim) ))
 
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_store__in, () )
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_store__out, () )
+
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_load__in, () )
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_load__out, () )
+
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_CAS__in, () )
+		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_CAS__out, () )
+
 #endif
 
 #endif /* WSR_TRACE_H_ */

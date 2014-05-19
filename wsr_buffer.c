@@ -80,6 +80,8 @@ void wsr_buffer_list_free(WSR_BUFFER_LIST_P buffer_list, int free_buffers){
 
 void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
+	DMSG("adding buffer %d to the list\n", buf->id);
+
     assert(buffer_list != NULL);
 
     buffer_list->size += buf->size;
@@ -94,23 +96,45 @@ void wsr_buffer_list_add(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 
     buffer_list->next = wsr_buffer_list_create(buf);
 
+    DMSG("Added\n");
+
     return;
 }
  
 
-WSR_BUFFER_LIST_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
+WSR_BUFFER_P wsr_buffer_list_search(WSR_BUFFER_LIST_P buffer_list, int buf_id){
+
+	DMSG("Searching for buffer %d \n", buf_id);
 
     while(buffer_list != NULL){
-        if(buffer_list->buf_ptr== buf){
-            return buffer_list; 
+        if(buffer_list->buf_ptr!= NULL){
+
+        	if(buffer_list->buf_ptr->id == buf_id)
+                return buffer_list->buf_ptr;
         }
 
         buffer_list = buffer_list->next;
     }
 
-    return buffer_list;
+    DMSG("not found\n");
+
+    return NULL;
 }
 
+
+int wsr_buffer_list_num_elemnts(WSR_BUFFER_LIST_P buffer_list){
+
+	int i = 0;
+	while(buffer_list != NULL){
+        if(buffer_list->buf_ptr != NULL)
+            i++;
+
+		buffer_list = buffer_list->next;
+	}
+
+	return i;
+
+}
 
 void wsr_buffer_list_remove(WSR_BUFFER_LIST_P buffer_list, WSR_BUFFER_P buf){
 

@@ -6,6 +6,7 @@
 #include "stdatomic.h"
 
 //Task
+#pragma pack(8)
 typedef struct 
 {
 
@@ -24,6 +25,7 @@ typedef struct
     //List of dependent tasks
     void *dep_task_list;
 
+
     int *dep_task_ids;
 
     //Time it took to execute
@@ -37,6 +39,8 @@ typedef struct
 
     //list of required data buffers
     WSR_BUFFER_LIST *buffer_list;
+
+    int *dep_buffer_ids;
 
     int param;
 
