@@ -175,6 +175,7 @@ void wsr_task_increment_sync_counter(WSR_TASK_P task ){
     size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
     atomic_store_explicit (&task->sync_counter, sync_counter+1, relaxed);
 
+
     return;
 }
 
@@ -217,14 +218,29 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
 
 
 #ifdef COMPUTE_CLUSTER
+
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id){
 
     size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
     atomic_store_explicit (&task->sync_counter, sync_counter- 1, relaxed);
+
+   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+   printf("sync counter of %d = %d\n", task->id, sync_counter);
+
+    if (!__k1_compare_and_swap (&task->sync_counter, 0, -1))
+    	return;
+
+    	DMSG("thread %d Sync counter is zero, adding task %d to cdeque\n", thread_id, task->id);
+    	cdeque_push_task(thread_id, task);
+        return;
+
+    /*
+
     if(sync_counter == 1){
-    	DMSG("Sync counter is zero, adding task %d to cdeque\n", task->id);
+    	printf("thread %d Sync counter is zero, adding task %d to cdeque\n", thread_id, task->id);
     	cdeque_push_task(thread_id, task);
     }
+        */
 
     return;
 }
@@ -237,7 +253,7 @@ void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id){
 
     while(task_list != NULL){
 
-    	DMSG("Decrement the sync counter of task %d\n", task_list->task->id);
+    	printf("thread %d Decrement the sync counter of task %d\n", thread_id, task_list->task->id);
         wsr_task_decrement_sync_counter(task_list->task, thread_id);
         task_list = task_list->next;
     }

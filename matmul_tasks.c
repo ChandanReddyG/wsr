@@ -34,7 +34,7 @@ block_matrix_multiply(int block_size,
 
 int block_matrix_multiply_task(WSR_BUFFER_LIST_P buffer_list, int block_size){
 
-	DMSG("block matrix  multiply task is called\n");
+//	DMSG("block matrix  multiply task is called\n");
 	int i = 0;
 
 	WSR_BUFFER_P c_buf = buffer_list->buf_ptr;
@@ -58,16 +58,16 @@ int block_matrix_multiply_task(WSR_BUFFER_LIST_P buffer_list, int block_size){
 	//DMSG("a = %d, b = %d, c =%d\n", num_elem_a, num_elem_b, num_elem_c);
 	assert((num_elem_a == num_elem_b) && (num_elem_a== num_elem_c));
 
-    DMSG("matrix a \n");
+//    DMSG("matrix a \n");
 //	print_matrix(block_size, a);
-    DMSG("matrix b \n");
+//    DMSG("matrix b \n");
 //	print_matrix(block_size, b);
-    DMSG("matrix c \n");
+//    DMSG("matrix c \n");
 //	print_matrix(block_size, c);
 
 	block_matrix_multiply(block_size, a, b, c);
 
-    DMSG("matrix c after task execution\n");
+//    DMSG("matrix c after task execution\n");
 //	print_matrix(block_size, c);
     
 	return 0;

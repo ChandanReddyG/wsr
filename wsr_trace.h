@@ -101,6 +101,24 @@ MPPA_DECLARE_TRACEPOINT(wsr, wait_till_ready_task_transfer_completion__in, ( MPP
 		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_CAS__in, () )
 		 MPPA_DECLARE_TRACEPOINT(wsr, atomic_CAS__out, () )
 
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_push__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+		          MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_push__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+		          MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_take__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+				  MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_take__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+				  MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_steal__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+				  MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
+		  MPPA_DECLARE_TRACEPOINT(wsr, cdeque_steal__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, top),
+				  MPPA_TRACEPOINT_DEC_FIELD(int, bottom) ))
+
 #endif
 
 #endif /* WSR_TRACE_H_ */

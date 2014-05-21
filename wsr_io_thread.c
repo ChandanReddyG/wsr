@@ -235,7 +235,6 @@ void *service_cc(void *arg){
 //
 //		DMSG("Out of the loop\n");
 
-	int prev_state = -1, cur_state = 0, next_state = 1;
 
 //	char *t;
 //		posix_memalign((void**)&(t), 32, 2 * sizeof(double) + sizeof(WSR_TASK) );
@@ -274,9 +273,10 @@ void *service_cc(void *arg){
 	int chunk_size = num_blocks / nb_clusters;
 
     i = chunk_size;
-    i = 2;
+//    i = 1;
 	int iter = 0;
     int num_tasks = 0, d_size = 0;
+	int prev_state = -1, cur_state = 0, next_state = 1;
 	while(1){
 
 		DMSG("--------------------------------------------------------------------------\n");
@@ -288,7 +288,8 @@ void *service_cc(void *arg){
 		if(task_list == NULL)
 			DMSG("task_list is null\n");
 
-        size = wsr_serialize_tasks(task_list, buf[cur_state]);
+//		if(!i)
+            size = wsr_serialize_tasks(task_list, buf[cur_state]);
 
 		//Receive the completed tasks of prev state
 		if(prev_state>-1){
@@ -326,7 +327,7 @@ void *service_cc(void *arg){
 	}
 
 	DMSG("Sending exit tasks\n");
-	WSR_TASK_LIST_P exit_task_list = wsr_create_exit_task_list(nb_threads);
+	WSR_TASK_LIST_P exit_task_list = wsr_create_exit_task_list(nb_threads*2);
 	size = wsr_serialize_tasks(exit_task_list, buf[cur_state]);
 
 	wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);

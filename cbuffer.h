@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NATIVE 0
 /* #define _DEBUG_THIS_ */
 
 #ifdef _DEBUG_THIS_
@@ -59,13 +60,21 @@ cbuffer_size (cbuffer_p cbuffer)
 static inline wstream_df_type
 cbuffer_get (cbuffer_p cbuffer, size_t i)
 {
+#ifndef NATIVE
   return cbuffer->array[i & cbuffer->modulo_mask];
+#else
+	__k1_umem_read32(&cbuffer->array[i & __k1_umem_read32(&cbuffer->modulo_mask)]);
+#endif
 }
 
 static inline void
 cbuffer_set (cbuffer_p cbuffer, size_t i, wstream_df_type elem)
 {
+#ifndef NATIVE
   cbuffer->array[i & cbuffer->modulo_mask] = elem;
+#else
+	__k1_umem_write32(&(cbuffer->array[i & __k1_umem_read32(&cbuffer->modulo_mask)]), elem);
+#endif
 }
 
 static inline void

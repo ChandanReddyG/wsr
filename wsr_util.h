@@ -7,7 +7,7 @@
 #include <malloc.h>
  #include <string.h>
 #include <assert.h>
-
+ #include <pthread.h>
 
 //size of buffers used in double buffering scheme: 0.5 MB
 #define BUFFER_SIZE 524288
@@ -19,12 +19,12 @@
 unsigned long
 convert_str_to_ul(const char *str);
 
-#  define IS_DEBUG 1
+#  define IS_DEBUG 0
 
 #  if IS_DEBUG == 1
 #    define DMSG(fmt, ...)                                    \
-	do {                                                    \
-		printf("<%3d> " fmt, mppa_getpid(), ## __VA_ARGS__);   \
+	do {                                    \
+		printf("<%3d> " fmt, mppa_getpid(),  ## __VA_ARGS__);   \
 	} while (0)
 #  else
 #    define DMSG(fmt, ...) do { } while (0)

@@ -73,9 +73,10 @@ int vector_sum(WSR_BUFFER_LIST_P buffer_list){
 int compute_default(int x){
 
 	DMSG("Compute function default called\n");
-	//    EMSG("Wrong task type\n");
+//	assert(0);
+//	    EMSG("Wrong task type\n");
 
-	return 0;
+	return 1;
 }
 
 WSR_TASK_P wsr_create_exit_task(){
@@ -133,13 +134,13 @@ int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads){
 		}
 	}
 
-//		wsr_add_to_single_cdeque(cur_tasks, thread_id);
-		wsr_add_to_cdeque(cur_tasks, thread_id, num_threads);
+		wsr_add_to_single_cdeque(cur_tasks, thread_id);
+		//wsr_add_to_cdeque(cur_tasks, thread_id, num_threads, thread_id);
 
 	return 1;
 }
 
-int wsr_async_trasnfer_executed_task(int cur_state, int thread_id){
+int wsr_async_trasnfer_executed_task(int cur_state, int thread_id, int num_threads){
 
 	int prev_state = (cur_state -1)%PIPELINE_DEPTH;
 
@@ -148,9 +149,11 @@ int wsr_async_trasnfer_executed_task(int cur_state, int thread_id){
 	start_async_write_of_executed_tasks(cur_state, thread_id);
 
 	int next_state = (cur_state +1)%PIPELINE_DEPTH;
-	WSR_TASK_P execute_task = wsr_create_deseralize_task(next_state);
 
-	wsr_add_task_to_cdeque(execute_task, thread_id);
+	wsr_task_deseralize_tasks(next_state, thread_id, num_threads);
+//	WSR_TASK_P execute_task = wsr_create_deseralize_task(next_state);
+
+//	wsr_add_task_to_cdeque(execute_task, thread_id);
 
 	return 1;
 }
@@ -167,7 +170,7 @@ int program_exit_task(int thread_id){
 
 int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 
-	DMSG("Started executing task = %d\n", task->id);
+	printf("thread %d Started executing task = %d\n",  thread_id, task->id);
 
 		mppa_tracepoint(wsr, task_execute__in, thread_id, task->id);
 //	int cpt = __k1_read_dsu_timestamp();
@@ -190,13 +193,13 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 		ret = vector_sum(task->buffer_list);
 		break;
 	case -1:
-		ret = wsr_async_trasnfer_executed_task(task->param, thread_id);
+		ret = wsr_async_trasnfer_executed_task(task->param, thread_id, num_threads);
 		break;
 	case -2:
 		ret = wsr_task_deseralize_tasks(task->param, thread_id, num_threads);
 		break;
 	case MATMUL_TASK_ID:
-//		DMSG("Executing matmul task = %d\n", task->id);
+//		printf("Executing matmul task = %d\n", task->id);
 		ret = block_matrix_multiply_task(task->buffer_list, task->param);
 		break;
 	case EXIT_TASK_ID:
@@ -210,7 +213,7 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 	wsr_update_dep_tasks(task, thread_id);
 
 		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
-//	DMSG("Completed the execution of task = %d \n", task->id);
+	printf("thread %d Completed the execution of task = %d \n", thread_id,  task->id);
 
 //	task->time = __k1_read_dsu_timestamp() - cpt;
 

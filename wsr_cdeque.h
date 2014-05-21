@@ -68,14 +68,14 @@ print_cdeque (cdeque_p cdeque)
   printf ("\n");
 }
 
- void cdeque_push_bottom (cdeque_p, WSR_TASK_P);
+ void cdeque_push_bottom (cdeque_p, WSR_TASK_P, int);
  void cdeque_push_task(int , WSR_TASK_P );
  int cdeque_try_push_bottom (cdeque_p, WSR_TASK_P);
- WSR_TASK_P cdeque_take (cdeque_p);
+ WSR_TASK_P cdeque_take (cdeque_p, int);
  WSR_TASK_P cdeque_steal (cdeque_p);
   void *wsr_cdeque_execute(void *arg);
  void wsr_init_cdeques(int num_threads);
- void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads);
+ void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list, int num_tasks, int num_threads, int thread_id);
 void wsr_add_to_single_cdeque(WSR_TASK_LIST_P task_list, int thread_id);
 
 #endif
