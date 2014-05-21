@@ -306,9 +306,6 @@ void *service_cc(void *arg){
 
 		start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
 
-		//Start selection of next tasks
-//		WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
-
 
 		if(prev_state>-1){
 			wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);

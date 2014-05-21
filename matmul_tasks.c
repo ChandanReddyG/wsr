@@ -115,12 +115,12 @@ void copy_back_block_matrix(double *a, char  *block_a, int a1, int a2){
 WSR_TASK_P create_block_matmul_task(int a1, int a2, int b1, int b2, int c1, int c2, WSR_BUFFER_P c_buf){
 
 
-	int task_id = a1 * BLOCK_SIZE + a2 + b1 * BLOCK_SIZE + b2 + c1*BLOCK_SIZE + c2;
-	WSR_TASK_P task = wsr_task_alloc(MATMUL_TASK_ID, task_id, 0);
-
     int num_buffers_per_row = GLOBAL_MATRIX_SIZE/BLOCK_SIZE;
     int num_buffers_per_column = GLOBAL_MATRIX_SIZE/BLOCK_SIZE;
     int total_buffers = num_buffers_per_row * num_buffers_per_column;
+
+	int task_id = (a1 * BLOCK_SIZE + a2) * total_buffers  +  (b1 * BLOCK_SIZE + b2); //  + c1*BLOCK_SIZE + c2;
+	WSR_TASK_P task = wsr_task_alloc(MATMUL_TASK_ID, task_id, 0);
 
 	DMSG("creating block matmul task c1 = %d c2 = %d, a1 = %d, a2 = %d, b1 = %d, b2 = %d id = %d\n",
 			c1, c2, a1, a2, b1, b2, task_id);
@@ -299,24 +299,24 @@ int compare_matrices( int size,
 
 void print_matrix(int size, double *a){
 
+#  if IS_DEBUG == 1
 	int i, j;
 	for(i = 0; i<size; i++){
 		for(j=0;j<size;j++)
 			printf("%f\t", a[i*size + j]);
 		printf("\n");
 	}
-#  if IS_DEBUG == 1
+		printf("\n");
+		printf("\n");
 #endif
 }
 
 int verify_matmul_result(){
 
-//	printf("C = \n");
 	print_matrix(GLOBAL_MATRIX_SIZE, c);
 
 	block_matrix_multiply(GLOBAL_MATRIX_SIZE, a, b, d);
 
-//	printf("D = \n");
 	print_matrix(GLOBAL_MATRIX_SIZE, d);
 
 	return compare_matrices(GLOBAL_MATRIX_SIZE, c,d);

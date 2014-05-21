@@ -12,7 +12,7 @@
 
 #define MATMUL_TASK_ID 5
 #define BLOCK_SIZE 5
-#define GLOBAL_MATRIX_SIZE 10
+#define GLOBAL_MATRIX_SIZE 20
 
 
 #define A_ID 0

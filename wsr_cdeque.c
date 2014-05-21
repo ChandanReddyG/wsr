@@ -123,6 +123,9 @@ cdeque_take (cdeque_p cdeque, int thread_id)
 	 bottom - 1 would wrap around and allow steals to succeed
 	 even though they should not. Double-loading bottom is OK
 	 as we are the only thread that alters its value. */
+		mppa_tracepoint(wsr, cdeque_take__out,  __k1_umem_read32(&cdeque->top),
+				__k1_umem_read32(&cdeque->bottom) );
+
 		_PAPI_P1E;
 		return NULL;
 	}
@@ -138,6 +141,9 @@ cdeque_take (cdeque_p cdeque, int thread_id)
 	if (bottom < top)
 	{
 		atomic_store_explicit (&cdeque->bottom, bottom + 1, relaxed);
+		mppa_tracepoint(wsr, cdeque_take__out,  __k1_umem_read32(&cdeque->top),
+				__k1_umem_read32(&cdeque->bottom) );
+
 		_PAPI_P1E;
 		return NULL;
 	}
@@ -146,6 +152,9 @@ cdeque_take (cdeque_p cdeque, int thread_id)
 
 	if (bottom > top)
 	{
+		mppa_tracepoint(wsr, cdeque_take__out,  __k1_umem_read32(&cdeque->top),
+				__k1_umem_read32(&cdeque->bottom) );
+
 		_PAPI_P1E;
 		return task;
 	}
@@ -419,7 +428,7 @@ void *wsr_cdeque_execute(void *arg){
 			}
 		}
 		else {
-            sleep(0.001);
+//            sleep(0.001);
 
 //                DMSG("thread %d take failed \n", my_thread_id);
 
