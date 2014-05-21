@@ -26,3 +26,33 @@ convert_str_to_ul(const char *str)
 
 
 
+int get_prev_state(int state){
+
+	switch(state){
+	case 0:
+		return 2;
+	case 1:
+		return 0;
+	case 2:
+		return 1;
+	default:
+		assert(0);
+		return -1;
+	}
+}
+
+
+int get_next_state(int state){
+
+	switch(state){
+	case 0:
+		return 1;
+	case 1:
+		return 2;
+	case 2:
+		return 0;
+	default:
+		assert(0);
+		return -1;
+	}
+}

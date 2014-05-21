@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 			DMSG("Started receiving ready task cur state\n");
 			start_async_read_of_ready_tasks(0, cluster_id);
 
-			wsr_task_deseralize_tasks(0, 0, nb_threads);
+			wsr_task_deseralize_tasks(0, 0, nb_threads, 1);
 
 //			WSR_TASK_P init_task = wsr_create_deseralize_task(0);
 //			wsr_add_task_to_cdeque(init_task, 0);

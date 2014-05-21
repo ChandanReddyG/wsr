@@ -35,4 +35,7 @@ convert_str_to_ul(const char *str);
 		fprintf(stderr, "<%3d> ERROR: " fmt,  mppa_getpid(), ## __VA_ARGS__);   \
 	} while (0)
 
+int get_prev_state(int state);
+int get_next_state(int state);
+
 #endif

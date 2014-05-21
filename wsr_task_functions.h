@@ -19,7 +19,7 @@ void wait_till_executed_tasks_transfer_completion(int state, int thread_id);
 WSR_TASK_LIST_P deseralize_tasks(int state, int *num_tasks);
 WSR_TASK_LIST_P wsr_create_exit_task_list(int num_threads);
 WSR_TASK_P wsr_create_deseralize_task(int state);
-WSR_TASK_P wsr_create_executed_tasks_transfer_task(int state);
-int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads);
+WSR_TASK_P wsr_create_executed_tasks_transfer_task(int state, int first);
+int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads, int first);
 
 #endif

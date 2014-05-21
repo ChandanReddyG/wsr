@@ -10,6 +10,9 @@
 typedef struct 
 {
 
+    //Time it took to execute
+    long time;
+
     //type of the task, used to identify the function ptr
     int type;
 
@@ -28,9 +31,6 @@ typedef struct
 
     int *dep_task_ids;
 
-    //Time it took to execute
-    long time;
-
     //Total size of required data buffers
     int size;
 
@@ -43,6 +43,8 @@ typedef struct
     int *dep_buffer_ids;
 
     int param;
+
+    int param1;
 
 } WSR_TASK;
 

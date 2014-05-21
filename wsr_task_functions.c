@@ -98,10 +98,11 @@ WSR_TASK_LIST_P wsr_create_exit_task_list(int num_threads){
 
 #ifdef COMPUTE_CLUSTER
 
-WSR_TASK_P wsr_create_executed_tasks_transfer_task(int state){
+WSR_TASK_P wsr_create_executed_tasks_transfer_task(int state, int first){
 
 	WSR_TASK_P task = wsr_task_alloc(-1, -1, 0);
 	task->param = state;
+	task->param1 = first;
 	return task;
 }
 
@@ -112,11 +113,11 @@ WSR_TASK_P wsr_create_deseralize_task(int state){
 	return task;
 }
 
-int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads){
+int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads, int first){
 
 	wait_till_ready_tasks_transfer_completion(cur_state, thread_id);
 
-	int next_state = (cur_state + 1)%PIPELINE_DEPTH;
+	int next_state = get_next_state(cur_state);
 
 	start_async_read_of_ready_tasks(next_state, thread_id);
 
@@ -125,7 +126,7 @@ int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads){
 
 	if(cur_tasks->task->id != EXIT_TASK_ID){
 
-		WSR_TASK_P transfer_task = wsr_create_executed_tasks_transfer_task(cur_state);
+		WSR_TASK_P transfer_task = wsr_create_executed_tasks_transfer_task(cur_state, first);
 
 		WSR_TASK_LIST_P task_list = cur_tasks;
 		while(task_list != NULL){
@@ -140,17 +141,18 @@ int wsr_task_deseralize_tasks(int cur_state, int thread_id,int num_threads){
 	return 1;
 }
 
-int wsr_async_trasnfer_executed_task(int cur_state, int thread_id, int num_threads){
+int wsr_async_trasnfer_executed_task(int cur_state, int thread_id, int num_threads, int first){
 
-	int prev_state = (cur_state -1)%PIPELINE_DEPTH;
+	int prev_state = get_prev_state(cur_state);
 
-	wait_till_executed_tasks_transfer_completion(prev_state, thread_id);
+	if(!first)
+        wait_till_executed_tasks_transfer_completion(prev_state, thread_id);
 
 	start_async_write_of_executed_tasks(cur_state, thread_id);
 
-	int next_state = (cur_state +1)%PIPELINE_DEPTH;
+	int next_state = get_next_state(cur_state);
 
-	wsr_task_deseralize_tasks(next_state, thread_id, num_threads);
+	wsr_task_deseralize_tasks(next_state, thread_id, num_threads, 0);
 //	WSR_TASK_P execute_task = wsr_create_deseralize_task(next_state);
 
 //	wsr_add_task_to_cdeque(execute_task, thread_id);
@@ -193,11 +195,11 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 		ret = vector_sum(task->buffer_list);
 		break;
 	case -1:
-		ret = wsr_async_trasnfer_executed_task(task->param, thread_id, num_threads);
+		ret = wsr_async_trasnfer_executed_task(task->param, thread_id, num_threads, task->param1);
 		break;
-	case -2:
-		ret = wsr_task_deseralize_tasks(task->param, thread_id, num_threads);
-		break;
+//	case -2:
+//		ret = wsr_task_deseralize_tasks(task->param, thread_id, num_threads);
+//		break;
 	case MATMUL_TASK_ID:
 //		printf("Executing matmul task = %d\n", task->id);
 		ret = block_matrix_multiply_task(task->buffer_list, task->param);
