@@ -44,6 +44,9 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem, int thread_id)
 	thread_fence (release);
 	atomic_store_explicit (&cdeque->bottom, bottom + 1, relaxed);
 
+	mppa_tracepoint(wsr, cdeque_push__out,  __k1_umem_read32(&cdeque->top),
+			__k1_umem_read32(&cdeque->bottom) );
+
 #else
 	size_t bottom = __k1_umem_read32(&cdeque->bottom);
 	size_t top = __k1_umem_read32(&cdeque->top);

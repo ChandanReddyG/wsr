@@ -120,7 +120,7 @@ void start_async_write_of_ready_tasks(int cluster_id, int state, char *buf, int 
 	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
 	mppa_aiocb_set_pwrite(cur_aiocb, buf, size, 0);
 
-	mppa_tracepoint(wsr, start_aync_write_of_ready_tasks, cluster_id, state);
+	mppa_tracepoint(wsr, comm_start_aync_write_of_ready_tasks, cluster_id, state);
 
 	int status = mppa_aio_write(cur_aiocb);
 	assert(status == 0);
@@ -133,7 +133,7 @@ void wait_till_ready_task_transfer_completion(int cluster_id, int state, int siz
 
 	DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
 
-	mppa_tracepoint(wsr,io_wait_till_ready_task_transfer_completion__in, cluster_id, state );
+	mppa_tracepoint(wsr,comm_io_wait_till_ready_task_transfer_completion__in, cluster_id, state );
 	if(state<0 || state >= PIPELINE_DEPTH)
 		return;
 
@@ -144,7 +144,7 @@ void wait_till_ready_task_transfer_completion(int cluster_id, int state, int siz
 	//	assert(status == size);
 
 	DMSG(" the ready task transfer is complete for state = %d, ret = %d\n", state, status);
-	mppa_tracepoint(wsr,io_wait_till_ready_task_transfer_completion__out, cluster_id, state );
+	mppa_tracepoint(wsr,comm_io_wait_till_ready_task_transfer_completion__out, cluster_id, state );
 
 	return;
 
@@ -164,7 +164,7 @@ void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, in
 	mppa_aiocb_ctor(cur_aiocb, portal_fd, buf, size);
 	mppa_aiocb_set_trigger(cur_aiocb, 1);
 
-	mppa_tracepoint(wsr, start_aync_read_executed_tasks, cluster_id, state);
+	mppa_tracepoint(wsr, comm_start_aync_read_executed_tasks, cluster_id, state);
 
 	int status = mppa_aio_read(cur_aiocb);
 	assert(status == 0);
@@ -175,7 +175,7 @@ void start_async_read_of_executed_tasks(int cluster_id, int state, char *buf, in
 
 void wait_till_executed_task_transfer_completion(int cluster_id, int state, int size){
 
-	mppa_tracepoint(wsr, io_wait_till_executed_task_transfer_completion__in, cluster_id, state);
+	mppa_tracepoint(wsr, comm_io_wait_till_executed_task_transfer_completion__in, cluster_id, state);
 
 	DMSG("waiting for the executed task transfer to complete for state = %d\n", state);
 	if(state<0 || state >= PIPELINE_DEPTH)
@@ -186,7 +186,7 @@ void wait_till_executed_task_transfer_completion(int cluster_id, int state, int 
 
 	int status =  mppa_aio_wait(cur_aiocb);
 	assert(status == size);
-	mppa_tracepoint(wsr, io_wait_till_executed_task_transfer_completion__out, cluster_id, state);
+	mppa_tracepoint(wsr, comm_io_wait_till_executed_task_transfer_completion__out, cluster_id, state);
 
 	DMSG(" the executed task transfer is complete for state = %d, ret = %d\n", state, status);
 	return;

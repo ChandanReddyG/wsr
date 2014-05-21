@@ -111,7 +111,7 @@ void start_async_read_of_ready_tasks(int state, int thread_id){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_tracepoint(wsr, start_sync_read_of_read_tasks, thread_id, state);
+	mppa_tracepoint(wsr, comm_start_sync_read_of_read_tasks, thread_id, state);
 
 	mppa_aiocb_ctor(&io_to_cc_aiocb[state], io_to_cc_fd[state], buf[state], buf_size[state]);
 	mppa_aiocb_set_trigger(&io_to_cc_aiocb[state], 1);
@@ -128,12 +128,12 @@ void wait_till_ready_tasks_transfer_completion(int state, int thread_id){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_tracepoint(wsr, wait_till_ready_task_transfer_completion__in, thread_id, state);
+	mppa_tracepoint(wsr, comm_wait_till_ready_task_transfer_completion__in, thread_id, state);
 
 	DMSG("waiting for the ready task transfer to complete for state = %d\n", state);
 	int status = mppa_aio_wait(&io_to_cc_aiocb[state]);
 	assert(status == buf_size[state]);
-	mppa_tracepoint(wsr, wait_till_ready_task_transfer_completion__out, thread_id, state);
+	mppa_tracepoint(wsr, comm_wait_till_ready_task_transfer_completion__out, thread_id, state);
 	DMSG(" the ready task transfer is complete from io to cc for state = %d, ret = %d\n", state, status);
 	return;
 }
@@ -145,7 +145,7 @@ void start_async_write_of_executed_tasks(int state, int thread_id){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_tracepoint(wsr, start_async_write_of_executed_tasks, thread_id, state);
+	mppa_tracepoint(wsr, comm_start_async_write_of_executed_tasks, thread_id, state);
 
 	assert(buf_size[state] >= 0);
 	DMSG("Sending buf size = %d\n", buf_size[state]);
@@ -165,11 +165,11 @@ void wait_till_executed_tasks_transfer_completion(int state, int thread_id){
 	if(state<0 || state > PIPELINE_DEPTH)
 		return;
 
-	mppa_tracepoint(wsr, wait_till_executed_task_transfer_completion__in, thread_id, state);
+	mppa_tracepoint(wsr, comm_wait_till_executed_task_transfer_completion__in, thread_id, state);
 
 	int status = mppa_aio_wait(&cc_to_io_aiocb[state]);
 	assert(status == buf_size[state]);
-	mppa_tracepoint(wsr, wait_till_executed_task_transfer_completion__out, thread_id, state);
+	mppa_tracepoint(wsr, comm_wait_till_executed_task_transfer_completion__out, thread_id, state);
 	DMSG(" the executed task transfer is complete from cc to io for state = %d, ret = %d\n", state, status);
 	return;
 }

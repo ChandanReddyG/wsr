@@ -41,42 +41,42 @@ MPPA_DECLARE_TRACEPOINT(wsr, thread__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread
 MPPA_DECLARE_TRACEPOINT(wsr, thread__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id) ))
 
 
-MPPA_DECLARE_TRACEPOINT(wsr, start_aync_read_executed_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+MPPA_DECLARE_TRACEPOINT(wsr, comm_start_aync_read_executed_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
-MPPA_DECLARE_TRACEPOINT(wsr, start_aync_write_of_ready_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+MPPA_DECLARE_TRACEPOINT(wsr, comm_start_aync_write_of_ready_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
-MPPA_DECLARE_TRACEPOINT(wsr, io_wait_till_ready_task_transfer_completion__in,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+MPPA_DECLARE_TRACEPOINT(wsr, comm_io_wait_till_ready_task_transfer_completion__in,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
-MPPA_DECLARE_TRACEPOINT(wsr,io_wait_till_ready_task_transfer_completion__out,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+MPPA_DECLARE_TRACEPOINT(wsr,comm_io_wait_till_ready_task_transfer_completion__out,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
- MPPA_DECLARE_TRACEPOINT(wsr, io_wait_till_executed_task_transfer_completion__in,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+ MPPA_DECLARE_TRACEPOINT(wsr, comm_io_wait_till_executed_task_transfer_completion__in,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
- MPPA_DECLARE_TRACEPOINT(wsr, io_wait_till_executed_task_transfer_completion__out,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+ MPPA_DECLARE_TRACEPOINT(wsr, comm_io_wait_till_executed_task_transfer_completion__out,  ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
 		 MPPA_DECLARE_TRACEPOINT(wsr, seralize__in, () )
 		 MPPA_DECLARE_TRACEPOINT(wsr, seralize__out, () )
 
- MPPA_DECLARE_TRACEPOINT(wsr, start_sync_read_of_read_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+ MPPA_DECLARE_TRACEPOINT(wsr, comm_start_sync_read_of_read_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
-MPPA_DECLARE_TRACEPOINT(wsr, wait_till_ready_task_transfer_completion__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+MPPA_DECLARE_TRACEPOINT(wsr, comm_wait_till_ready_task_transfer_completion__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
- MPPA_DECLARE_TRACEPOINT(wsr, wait_till_ready_task_transfer_completion__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+ MPPA_DECLARE_TRACEPOINT(wsr, comm_wait_till_ready_task_transfer_completion__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
-		 MPPA_DECLARE_TRACEPOINT(wsr, start_async_write_of_executed_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+		 MPPA_DECLARE_TRACEPOINT(wsr, comm_start_async_write_of_executed_tasks, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 				 MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
 
- MPPA_DECLARE_TRACEPOINT(wsr, wait_till_executed_task_transfer_completion__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+ MPPA_DECLARE_TRACEPOINT(wsr, comm_wait_till_executed_task_transfer_completion__in, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
 		MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
-  MPPA_DECLARE_TRACEPOINT(wsr, wait_till_executed_task_transfer_completion__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
+  MPPA_DECLARE_TRACEPOINT(wsr, comm_wait_till_executed_task_transfer_completion__out, ( MPPA_TRACEPOINT_DEC_FIELD(int, thread_id),
           MPPA_TRACEPOINT_DEC_FIELD(int, state) ))
 
  		 MPPA_DECLARE_TRACEPOINT(wsr, deseralize__in, () )
