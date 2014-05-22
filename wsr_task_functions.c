@@ -172,7 +172,7 @@ int program_exit_task(int thread_id){
 
 int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 
-	printf("thread %d Started executing task = %d, sync counter = %d\n",  thread_id, task->id, task->sync_counter);
+//	printf("thread %d Started executing task = %d, sync counter = %d\n",  thread_id, task->id, task->sync_counter);
 
 		mppa_tracepoint(wsr, task_execute__in, thread_id, task->id);
 //	int cpt = __k1_read_dsu_timestamp();
@@ -215,7 +215,7 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 	wsr_update_dep_tasks(task, thread_id);
 
 		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
-	printf("thread %d Completed the execution of task = %d \n", thread_id,  task->id);
+//	printf("thread %d Completed the execution of task = %d \n", thread_id,  task->id);
 
 	free(task);
 

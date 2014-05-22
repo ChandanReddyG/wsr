@@ -20,7 +20,7 @@
 unsigned long
 convert_str_to_ul(const char *str);
 
-#  define IS_DEBUG 1
+#  define IS_DEBUG 0
 
 #  if IS_DEBUG == 1
 #    define DMSG(fmt, ...)                                    \

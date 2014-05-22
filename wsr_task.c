@@ -233,19 +233,16 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id){
 
 
-    size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
-   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
+    size_t sync_counter;
+//   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
 	atomic_fetch_add_explicit(&task->sync_counter, -1, __ATOMIC_SEQ_CST);
 
-   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+//   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
 //    atomic_store_explicit (&task->sync_counter, sync_counter- 1, relaxed);
 //
 //   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
-   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
+//   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
 //	assert(sync_counter > 0);
-
-//    if (!__k1_compare_and_swap (&task->sync_counter, 0, -1))
-//    	return;
 
    int zero = 0;
 	if (!atomic_compare_exchange_strong_explicit (&task->sync_counter, &zero, -1,
