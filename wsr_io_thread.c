@@ -271,6 +271,7 @@ void *service_cc(void *arg){
 
 	int num_blocks = GLOBAL_MATRIX_SIZE / BLOCK_SIZE;
 	int chunk_size = num_blocks / nb_clusters;
+    DMSG("chunk size = %d, nb blocks = %d\n", chunk_size, num_blocks);
 
     i = chunk_size;
 //    i = 1;
@@ -288,7 +289,7 @@ void *service_cc(void *arg){
 		if(task_list == NULL)
 			DMSG("task_list is null\n");
 
-		if( i != 1)
+		//if( i != 1)
             size = wsr_serialize_tasks(task_list, buf[cur_state]);
             DMSG("Buffer size  = %d\n", size );
 
