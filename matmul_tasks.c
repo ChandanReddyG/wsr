@@ -229,7 +229,8 @@ WSR_TASK_LIST_P  get_block_matmul_task_list_(int c1, int c2, int num_blocks){
 
 }
 
-WSR_TASK_LIST_P get_matmul_task_list(int cluster_id, int num_clusters, int cur_iteration){
+WSR_TASK_LIST_P get_matmul_task_list(int cluster_id, int num_clusters,
+		int cur_iteration, int col_start, int col_end){
 
 	WSR_TASK_LIST_P task_list = NULL;
 
@@ -238,8 +239,10 @@ WSR_TASK_LIST_P get_matmul_task_list(int cluster_id, int num_clusters, int cur_i
 
 	int  c1 = cluster_id * chunk_size + cur_iteration;
 
+	printf("Generating task list for row = %d, col_start = %d, col_end = %d\n", c1, col_start, col_end);
+
 	WSR_TASK_LIST_P cur_task_list = NULL;
-	for(int i = 0;  i < num_blocks; i++){
+	for(int i = col_start;  i < col_end; i++){
 
 		cur_task_list = get_block_matmul_task_list_(c1, i, num_blocks);
 		task_list = wsr_task_list_append(task_list, cur_task_list);
@@ -248,7 +251,8 @@ WSR_TASK_LIST_P get_matmul_task_list(int cluster_id, int num_clusters, int cur_i
 	return task_list;
 }
 
-void copy_back_output(WSR_TASK_LIST_P task_list, int cluster_id, int num_clusters, int cur_iteration){
+void copy_back_output(WSR_TASK_LIST_P task_list, int cluster_id, int num_clusters, int cur_iteration,
+		int col_start, int col_end){
 
 //	DMSG("Copy back function\n");
 
@@ -258,7 +262,7 @@ void copy_back_output(WSR_TASK_LIST_P task_list, int cluster_id, int num_cluster
 	int  c1 = cluster_id * chunk_size + cur_iteration;
 
 //    print_matrix(GLOBAL_MATRIX_SIZE, c);
-	for(int i = 0;  i < num_blocks; i++){
+	for(int i = col_start;  i < col_end; i++){
 
 
 		WSR_BUFFER_P c_buf =  task_list->task->buffer_list->buf_ptr;

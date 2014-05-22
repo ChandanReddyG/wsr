@@ -212,117 +212,75 @@ void *service_cc(void *arg){
 	}
 
 	int size;
-	//	for(i=0;i<1;i++){
-
-
-
-//		for(i=0;i<3;i++){
-//		start_async_read_of_executed_tasks(cluster_id, 0, buf[1], BUFFER_SIZE);
-//		//Select
-//		WSR_TASK_LIST_P task_list = get_next_task_list(cluster_id);
-//
-//		if(task_list != NULL)
-//			size = wsr_serialize_tasks(task_list, buf[0]);
-//
-//		start_async_write_of_ready_tasks(cluster_id, 0, buf[0], size);
-//
-//		wait_till_ready_task_transfer_completion(cluster_id, 0, size);
-//
-//		wait_till_executed_task_transfer_completion(cluster_id, 0, BUFFER_SIZE);
-//
-//		WSR_TASK_LIST_P c = wsr_deseralize_tasks(buf[1], size);
-//		}
-//
-//		DMSG("Out of the loop\n");
-
-
-//	char *t;
-//		posix_memalign((void**)&(t), 32, 2 * sizeof(double) + sizeof(WSR_TASK) );
-//
-////		t += sizeof(WSR_TASK);
-//
-//		double *d = (double *)t;
-//		d[0] = 1.2;
-//		d[1] = 3.5;
-//
-//		t += sizeof(double);
-//
-//		double q = 0;
-//		memcpy(&q, t, sizeof(double));
-//		DMSG("d 0 = %f\n", q);
-//		return 0;
-
-//
-//		double *s = (double *)t;
-//		DMSG("d 0 = %f\n", s[0]);
-//		DMSG("d 1 = %f\n", s[1]);
-
-//		char *t = memalign(64, 2 * sizeof(double) + sizeof(int) );
-
-//	char *t  = malloc(2 * sizeof(double) + sizeof(int));
-
-//	long *in = (long *)t;
-//	in[0] = 3.0;
-//
-//	t += sizeof(long);
-//
-//
-
 
 	int num_blocks = GLOBAL_MATRIX_SIZE / BLOCK_SIZE;
-	int chunk_size = num_blocks / nb_clusters;
-    DMSG("chunk size = %d, nb blocks = %d\n", chunk_size, num_blocks);
+	int num_rows_per_cluster = num_blocks / nb_clusters;
+	int num_cols_per_group = num_blocks/NUM_GROUPED_TASKS;
 
-    i = chunk_size;
-//    i = 1;
-	int iter = 0;
+    printf("num blocks = %d, num_rows_per_cluster = %d, num cols per cluster  = %d\n",
+    		num_blocks,  num_rows_per_cluster, num_cols_per_group);
+
     int num_tasks = 0, d_size = 0;
 	int prev_state = -1, cur_state = 0, next_state = 1;
-	while(1){
+	int j, prev_row = 0, prev_col_start = -1, prev_col_end = -1;
 
-		DMSG("-------------------------- iter = %d ------------------------------------------------\n", iter);
-//		DMSG("Started the loop  prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
-//				next_state);
+	for(i =0; i< num_rows_per_cluster;i++){
 
-		WSR_TASK_LIST_P task_list = get_matmul_task_list(cluster_id, nb_clusters, iter);
+		DMSG("-------------------------- iter = %d ------------------------------------------------\n", i);
 
-		if(task_list == NULL)
-			DMSG("task_list is null\n");
+		for(j=0; j<num_cols_per_group; j++){
 
-		//if( i != 1)
-            size = wsr_serialize_tasks(task_list, buf[cur_state]);
-            DMSG("Buffer size  = %d\n", size );
+			WSR_TASK_LIST_P task_list = get_matmul_task_list(cluster_id,
+					nb_clusters, i, max(0, j*NUM_GROUPED_TASKS),
+					min( (j+1)*NUM_GROUPED_TASKS, GLOBAL_MATRIX_SIZE));
 
-		//Receive the completed tasks of prev state
-		if(prev_state>-1){
-			wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
-			WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size, num_tasks);
-			copy_back_output(prev_task_list, cluster_id, nb_clusters, iter -1);
+			if(task_list == NULL)
+				DMSG("task_list is null\n");
 
-            //verify_matmul_result();
+            DMSG("task list creation done\n");
+			size = wsr_serialize_tasks(task_list, buf[cur_state]);
+			printf("Buffer size  = %d\n", size );
 
-			i--;
-			if(!i)
+			//Receive the completed tasks of prev state
+			if(prev_col_start>-1 && prev_col_end > -1 && prev_row > -1){
+				assert(prev_state>-1);
+				wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
+				WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size, &num_tasks);
+				copy_back_output(prev_task_list, cluster_id, nb_clusters, prev_row, prev_col_start,
+						prev_col_end);
+
+			}
+
+			prev_row = i;
+			prev_col_start = max(0, j*NUM_GROUPED_TASKS);
+			prev_col_end = min( (j+1)*NUM_GROUPED_TASKS, GLOBAL_MATRIX_SIZE);
+
+			start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
+
+			if(prev_state>-1){
+				wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);
+			}
+
+			start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
+
+			if(task_list == NULL)
 				break;
+
+			prev_state = cur_state;
+			cur_state = next_state;
+			next_state =  (next_state + 1)%PIPELINE_DEPTH;
+
 		}
 
-		start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
+	}
 
+	if(prev_col_start>-1 && prev_col_end > -1 && prev_row > -1){
+		assert(prev_state>-1);
+		wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
+		WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size,&num_tasks);
+		copy_back_output(prev_task_list, cluster_id, nb_clusters, prev_row, prev_col_start,
+				prev_col_end);
 
-		if(prev_state>-1){
-			wait_till_ready_task_transfer_completion(cluster_id, prev_state, size);
-		}
-
-		start_async_write_of_ready_tasks(cluster_id, cur_state, buf[cur_state], size);
-
-		if(task_list == NULL)
-			break;
-
-		prev_state = cur_state;
-		cur_state = next_state;
-		next_state =  (next_state + 1)%PIPELINE_DEPTH;
-
-		iter++;
 	}
 
 	DMSG("Sending exit tasks\n");
