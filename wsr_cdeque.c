@@ -19,8 +19,8 @@ cdeque_push_bottom (cdeque_p cdeque, WSR_TASK_P elem, int thread_id)
 {
 	_PAPI_P0B;
 
-	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
-	DMSG("thread %d Enter push top = %d, bottom = %d \n", thread_id,  __k1_umem_read32(&cdeque->top), __k1_umem_read32(&cdeque->bottom));
+//	DMSG ("cdeque_push_bottom with elem: %d\n", elem->id);
+	DMSG("thread %d Enter push elem = %d  top = %d, bottom = %d \n", thread_id, elem->id,  __k1_umem_read32(&cdeque->top), __k1_umem_read32(&cdeque->bottom));
 	mppa_tracepoint(wsr, cdeque_push__in,  __k1_umem_read32(&cdeque->top),
 			__k1_umem_read32(&cdeque->bottom) );
 #ifndef NATIVE
@@ -116,6 +116,8 @@ cdeque_take (cdeque_p cdeque, int thread_id)
 	cbuffer_p buffer;
 
 #ifndef NATIVE
+
+	DMSG("thread %d take top = %d, bottom = %d \n", thread_id, __k1_umem_read32(&cdeque->top), __k1_umem_read32(&cdeque->bottom));
 
 	mppa_tracepoint(wsr, cdeque_take__in,  __k1_umem_read32(&cdeque->top),
 			__k1_umem_read32(&cdeque->bottom) );
@@ -347,7 +349,7 @@ void wsr_init_cdeques(int nb_threads ){
 	DMSG("Nb threads = %d\n", num_threads);
 	assert(num_threads <= MAX_NUM_OF_THREADS);
 	for(int i =0;i<num_threads;i++)
-		cdeques[i] =  cdeque_alloc(7);
+		cdeques[i] =  cdeque_alloc(9);
 
 	return;
 
@@ -389,6 +391,7 @@ void wsr_add_to_cdeque(WSR_TASK_LIST_P task_list,
 //Add task for task list to the cdeque
 void wsr_add_to_single_cdeque(WSR_TASK_LIST_P task_list, int thread_id){
 
+	WSR_TASK_LIST_P cur_node = NULL;
 	int i = 0;
 	while(task_list != NULL){
 		if(task_list->task != NULL){
@@ -400,7 +403,9 @@ void wsr_add_to_single_cdeque(WSR_TASK_LIST_P task_list, int thread_id){
 			}
 		}
 
+		cur_node = task_list;
 		task_list = task_list->next;
+		wsr_task_list_free_node(cur_node);
 		i++;
 	}
 	return;
@@ -410,7 +415,7 @@ void *wsr_cdeque_execute(void *arg){
 
 	int my_thread_id = ((int *)arg)[0];
 
-	printf("thread %d started\n", my_thread_id);
+//	printf("thread %d started\n", my_thread_id);
 
 	int i = 0;
 	int victim = -1;
@@ -422,7 +427,7 @@ void *wsr_cdeque_execute(void *arg){
 		task = cdeque_take(my_cdeque, my_thread_id);
 
 		if(task != NULL){
-                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
+//                DMSG("thread %d started executing task %d \n", my_thread_id, task->id);
 			int ret = wsr_execute_a_task(task, my_thread_id);
 
 			if(ret == EXIT_TASK_ID){
@@ -465,7 +470,7 @@ void *wsr_cdeque_execute(void *arg){
 
 			if(task != NULL){
 				DMSG("thread %d successfully  stole task %d from thread %d\n", my_thread_id, task->id, victim);
-				fflush(stdout);
+//				fflush(stdout);
 				int ret = wsr_execute_a_task(task, my_thread_id);
 
 				if(ret == EXIT_TASK_ID){

@@ -28,7 +28,7 @@ char *wsr_seralize_dep_task_list(WSR_TASK_P task, char*buf){
 	while(task_list!=NULL){
 		if(task_list->task != NULL){
 			memcpy(buf, &(task_list->task->id), sizeof(int));
-			DMSG("Writing dep task id %d for the task %d\n", task_list->task->id,task->id );
+//			DMSG("Writing dep task id %d for the task %d\n", task_list->task->id,task->id );
 			buf += sizeof(int);
 			i++;
 		}
@@ -43,12 +43,12 @@ char *wsr_seralize_dep_buffer_list(WSR_TASK_P task, char*buf, WSR_BUFFER_LIST_P 
 
 	int i =0;
 	WSR_BUFFER_LIST_P buffer_list = task->buffer_list;
-	DMSG("serializing task buffer list of task %d\n", task->id);
+//	DMSG("serializing task buffer list of task %d\n", task->id);
 
 	while(buffer_list!=NULL){
 		if(buffer_list->buf_ptr != NULL){
 
-            DMSG("Adding buffer %d to task %d\n", buffer_list->buf_ptr->id, task->id);
+//            DMSG("Adding buffer %d to task %d\n", buffer_list->buf_ptr->id, task->id);
 
 			memcpy(buf, &(buffer_list->buf_ptr->id), sizeof(int));
 			buf += sizeof(int);
@@ -75,7 +75,7 @@ char *wsr_seralize_dep_buffer_list(WSR_TASK_P task, char*buf, WSR_BUFFER_LIST_P 
 
 char *wsr_deseralize_dep_task_list(WSR_TASK_P task, char*buf){
 
-	DMSG("Num of dep task of task %d = %d\n", task->id, task->num_dep_tasks);
+//	DMSG("Num of dep task of task %d = %d\n", task->id, task->num_dep_tasks);
 
 	task->dep_task_ids = (int *)malloc(task->num_dep_tasks * sizeof(int));
 	if(task->num_dep_tasks > 0)
@@ -85,7 +85,7 @@ char *wsr_deseralize_dep_task_list(WSR_TASK_P task, char*buf){
 	buf += (task->num_dep_tasks * sizeof(int));
 
 	if(task->num_dep_tasks > 0){
-        DMSG("Dep task id for task %d = %d\n", task->id, task->dep_task_ids[0]);
+//        DMSG("Dep task id for task %d = %d\n", task->id, task->dep_task_ids[0]);
 	}
 
 	return buf;
@@ -210,10 +210,10 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
 	mppa_tracepoint(wsr, seralize__in);
 
-	DMSG("Serializing task list\n");
+//	DMSG("Serializing task list\n");
 	int num_tasks = 0;
 	int task_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
-	DMSG("Num of tasks = %d\n", num_tasks);
+//	DMSG("Num of tasks = %d\n", num_tasks);
 
 	if(buf == NULL){
 		EMSG("Buffer is null\n");
@@ -234,7 +234,7 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 	int num_buffers = wsr_buffer_list_num_elemnts(all_buffers);
 	memcpy(buf,&num_buffers, sizeof(int));
     buf += sizeof(int);
-    DMSG("Number of buffers written = %d\n", num_buffers);
+//    DMSG("Number of buffers written = %d\n", num_buffers);
 
 	int buffer_size = 0;
     if(num_buffers > 0) 
@@ -242,7 +242,7 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 
 	int total_size = buffer_size + task_size + sizeof(int);
 	assert(total_size <= BUFFER_SIZE);
-	DMSG("buf_size  = %d\n", total_size);
+//	DMSG("buf_size  = %d\n", total_size);
 	memcpy(begin, &total_size, sizeof(int));
 
 	mppa_tracepoint(wsr, seralize__out);
@@ -257,11 +257,11 @@ WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int *buf_size, int *num_tasks){
 
 	memcpy(buf_size, buf, sizeof(int));
 	buf += sizeof(int);
-	DMSG("buf_size  = %d\n",*buf_size);
+//	DMSG("buf_size  = %d\n",*buf_size);
 
 	memcpy(num_tasks, buf, sizeof(int));
 	buf += sizeof(int);
-	DMSG("num of tasks received   = %d\n",*num_tasks);
+//	DMSG("num of tasks received   = %d\n",*num_tasks);
 
 	if(*num_tasks == 0)
 		return NULL;
@@ -275,7 +275,7 @@ WSR_TASK_LIST_P wsr_deseralize_tasks(char *buf, int *buf_size, int *num_tasks){
 	int num_buffers = 0;
 	memcpy(&num_buffers, buf, sizeof(int));
     buf += sizeof(int);
-    DMSG("Number of buffers receivied = %d\n", num_buffers);
+//    DMSG("Number of buffers receivied = %d\n", num_buffers);
 
 	WSR_BUFFER_LIST_P buffer_list = wsr_buffer_list_create(NULL);
 	wsr_deseralize_data_buffers(buffer_list, num_buffers, buf);

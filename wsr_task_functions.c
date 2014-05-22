@@ -172,7 +172,7 @@ int program_exit_task(int thread_id){
 
 int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 
-	printf("thread %d Started executing task = %d\n",  thread_id, task->id);
+	printf("thread %d Started executing task = %d, sync counter = %d\n",  thread_id, task->id, task->sync_counter);
 
 		mppa_tracepoint(wsr, task_execute__in, thread_id, task->id);
 //	int cpt = __k1_read_dsu_timestamp();
@@ -216,6 +216,8 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 
 		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
 	printf("thread %d Completed the execution of task = %d \n", thread_id,  task->id);
+
+	free(task);
 
 //	task->time = __k1_read_dsu_timestamp() - cpt;
 
@@ -295,7 +297,7 @@ WSR_TASK_LIST_P get_vector_sum_task_list(int cluster_id){
 static int num_iter = 5;
 WSR_TASK_LIST_P get_next_task_list(int cluster_id){
 
-	DMSG("Getting new  task list num = %d\n", num_iter);
+//	DMSG("Getting new  task list num = %d\n", num_iter);
 
 	if(num_iter == 0)
 		return NULL;

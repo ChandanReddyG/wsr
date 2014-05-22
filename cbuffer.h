@@ -80,6 +80,7 @@ cbuffer_set (cbuffer_p cbuffer, size_t i, wstream_df_type elem)
 static inline void
 cbuffer_grow (cbuffer_p volatile *cbuffer, size_t bottom, size_t top)
 {
+	assert(0);
   cbuffer_p new_cbuffer = cbuffer_alloc ((*cbuffer)->log_size + 1);
   cbuffer_p old_cbuffer = *cbuffer;
 

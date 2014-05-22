@@ -56,10 +56,10 @@ wsr_host-srcs := tuto_db_host.c common.c compute.c
 include ${K1_TOOLCHAIN_DIR}/share/make/Makefile.mppaipc
 
 run_hw: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 1 4 
+	cd $(BIN_DIR); ./wsr_host_hw 1024 8192 64 1 16 
 
 run_hw_trace: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util  -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 1024 8192 64 1 4 ; kill -SIGINT `cat ./k1-trace-util.pid`
+	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util  -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 1024 8192 64 1 16 ; kill -SIGINT `cat ./k1-trace-util.pid`
 	${K1_TOOLCHAIN_DIR}/bin/k1-stv -hwtrace $(BUILD_DIR)/wsr_io:$(BIN_DIR)/trace.dump.4 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.0 #-hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.1 # -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.2 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.3 &
 	#${K1_TOOLCHAIN_DIR}/bin/k1-stv -hwtrace $(BUILD_DIR)/wsr_io:$(BIN_DIR)/trace.dump.4 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.0 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.1 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.2 -hwtrace $(BUILD_DIR)/wsr_cc:$(BIN_DIR)/trace.dump.3 &
 

@@ -9,8 +9,9 @@
 #include <assert.h>
  #include <pthread.h>
 
-//size of buffers used in double buffering scheme: 0.5 MB
-#define BUFFER_SIZE 524288
+//size of buffers used in double buffering scheme: 0.1 MB
+#define BUFFER_SIZE 80000
+
 //#define BUFFER_SIZE 192
 #define PIPELINE_DEPTH 3
 

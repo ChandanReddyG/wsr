@@ -279,17 +279,18 @@ void *service_cc(void *arg){
 	int prev_state = -1, cur_state = 0, next_state = 1;
 	while(1){
 
-		DMSG("--------------------------------------------------------------------------\n");
-		DMSG("Started the loop  prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
-				next_state);
+		DMSG("-------------------------- iter = %d ------------------------------------------------\n", iter);
+//		DMSG("Started the loop  prev_state = %d, cur_state = %d, next_state = %d\n", prev_state, cur_state,
+//				next_state);
 
 		WSR_TASK_LIST_P task_list = get_matmul_task_list(cluster_id, nb_clusters, iter);
 
 		if(task_list == NULL)
 			DMSG("task_list is null\n");
 
-//		if(!i)
+		if( i != 1)
             size = wsr_serialize_tasks(task_list, buf[cur_state]);
+            DMSG("Buffer size  = %d\n", size );
 
 		//Receive the completed tasks of prev state
 		if(prev_state>-1){

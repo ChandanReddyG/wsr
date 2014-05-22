@@ -11,8 +11,8 @@
 #include "wsr_task.h"
 
 #define MATMUL_TASK_ID 5
-#define BLOCK_SIZE 10
-#define GLOBAL_MATRIX_SIZE 40
+#define BLOCK_SIZE 5
+#define GLOBAL_MATRIX_SIZE 80
 
 
 #define A_ID 0

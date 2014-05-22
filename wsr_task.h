@@ -64,6 +64,7 @@ typedef struct  wsr_task_list_t{
 typedef WSR_TASK_LIST* WSR_TASK_LIST_P;
 
 WSR_TASK_LIST_P  wsr_task_list_create(WSR_TASK_P task);
+void wsr_task_list_free_node(WSR_TASK_LIST_P cur_node);
 void wsr_task_list_free(WSR_TASK_LIST_P task_list, int free_tasks);
 void wsr_task_list_add(WSR_TASK_LIST_P task_list, WSR_TASK_P task);
 void wsr_task_list_remove(WSR_TASK_LIST_P task_list, WSR_TASK_P task);

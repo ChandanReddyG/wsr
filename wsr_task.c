@@ -22,6 +22,15 @@ task_list->task = task;
     return task_list;
 }
 
+void wsr_task_list_free_node(WSR_TASK_LIST_P cur_node){
+
+	if(cur_node == NULL)
+		return;
+
+	free(cur_node);
+	return;
+
+}
 void wsr_task_list_free(WSR_TASK_LIST_P task_list, int free_tasks){
 
     if(task_list == NULL)
@@ -41,7 +50,7 @@ void wsr_task_list_free(WSR_TASK_LIST_P task_list, int free_tasks){
 
 WSR_TASK_P wsr_task_list_search(WSR_TASK_LIST_P task_list, int task_id){
 
-	DMSG("Searching for the task %d \n", task_id);
+//	DMSG("Searching for the task %d \n", task_id);
 
 	while(task_list != NULL){
 		if(task_list->task != NULL){
@@ -184,6 +193,8 @@ void wsr_task_add_dependent_task(WSR_TASK_P task, WSR_TASK_P dep_task){
     assert(task != NULL);
     assert(dep_task != NULL);
 
+    DMSG("Task %d is dependent on %d task\n", dep_task->id, task->id);
+
     if(task->dep_task_list == NULL)
         task->dep_task_list = wsr_task_list_create(dep_task);
     else
@@ -193,7 +204,7 @@ void wsr_task_add_dependent_task(WSR_TASK_P task, WSR_TASK_P dep_task){
 
     wsr_task_increment_sync_counter(dep_task);
 
-    DMSG("Sync counter of task %d = %d \n", dep_task->id, dep_task->sync_counter);
+//    DMSG("Sync counter of task %d = %d \n", dep_task->id, dep_task->sync_counter);
 
     return;
 }
@@ -221,16 +232,29 @@ void wsr_task_add_dependent_buffer(WSR_TASK_P task, WSR_BUFFER_P buf){
 
 void wsr_task_decrement_sync_counter(WSR_TASK_P task, int thread_id){
 
+
     size_t sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
-    atomic_store_explicit (&task->sync_counter, sync_counter- 1, relaxed);
+   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
+	atomic_fetch_add_explicit(&task->sync_counter, -1, __ATOMIC_SEQ_CST);
 
    sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
-   printf("sync counter of %d = %d\n", task->id, sync_counter);
+//    atomic_store_explicit (&task->sync_counter, sync_counter- 1, relaxed);
+//
+//   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+   printf("thread %d sync counter of %d = %d\n", thread_id, task->id, sync_counter);
+//	assert(sync_counter > 0);
 
-    if (!__k1_compare_and_swap (&task->sync_counter, 0, -1))
-    	return;
+//    if (!__k1_compare_and_swap (&task->sync_counter, 0, -1))
+//    	return;
+
+   int zero = 0;
+	if (!atomic_compare_exchange_strong_explicit (&task->sync_counter, &zero, -1,
+			seq_cst, relaxed))
+		return;
 
     	DMSG("thread %d Sync counter is zero, adding task %d to cdeque\n", thread_id, task->id);
+   sync_counter = atomic_load_explicit(&task->sync_counter, relaxed);
+	assert(sync_counter == -1);
     	cdeque_push_task(thread_id, task);
         return;
 
@@ -253,7 +277,7 @@ void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id){
 
     while(task_list != NULL){
 
-    	printf("thread %d Decrement the sync counter of task %d\n", thread_id, task_list->task->id);
+//    	printf("thread %d Decrement the sync counter of task %d\n", thread_id, task_list->task->id);
         wsr_task_decrement_sync_counter(task_list->task, thread_id);
         task_list = task_list->next;
     }
@@ -263,7 +287,7 @@ void wsr_update_dep_tasks(WSR_TASK_P task, int thread_id){
 
 void wsr_task_list_execute(WSR_TASK_LIST_P task_list){
 
-	DMSG("Starting execution of task list\n");
+//	DMSG("Starting execution of task list\n");
 	if(task_list == NULL)
 		return;
 
