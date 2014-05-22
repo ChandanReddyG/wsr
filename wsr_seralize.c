@@ -78,6 +78,9 @@ char *wsr_deseralize_dep_task_list(WSR_TASK_P task, char*buf){
 //	DMSG("Num of dep task of task %d = %d\n", task->id, task->num_dep_tasks);
 
 	task->dep_task_ids = (int *)malloc(task->num_dep_tasks * sizeof(int));
+	if(task->num_dep_tasks >0 && task->dep_task_ids == NULL)
+		EMSG("Memory allocation failed\n");
+
 	if(task->num_dep_tasks > 0)
                 assert(task->dep_task_ids != NULL);
 
@@ -94,6 +97,9 @@ char *wsr_deseralize_dep_task_list(WSR_TASK_P task, char*buf){
 char *wsr_deseralize_dep_buffer_list(WSR_TASK_P task, char*buf){
 
 	task->dep_buffer_ids = (int *)malloc(task->num_buffers * sizeof(int));
+	if(task->num_buffers  > 0 && task->dep_buffer_ids == NULL)
+		EMSG("Memory allocation failed\n");
+
 	if(task->num_buffers > 0)
 		assert(task->dep_buffer_ids != NULL);
 
@@ -172,6 +178,8 @@ char *wsr_seralize_task(WSR_TASK_P task, char *buf, WSR_BUFFER_LIST_P all_buffer
 char *wsr_deseralize_task(WSR_TASK_LIST_P task_list, char *buf){
 
 	WSR_TASK_P task = malloc(sizeof(WSR_TASK));
+	if(task == NULL)
+		EMSG("Memory allocation failed\n");
 
 	memcpy(task, buf, sizeof(WSR_TASK));
 	buf += sizeof(WSR_TASK);

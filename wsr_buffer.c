@@ -10,7 +10,8 @@ WSR_BUFFER_P wsr_buffer_alloc(int size, int id){
     assert(size > 0);
 
     WSR_BUFFER_P buf = malloc(sizeof(WSR_BUFFER));
-    assert(buf != NULL);
+    if(buf == NULL)
+    	EMSG("Memory allocation failed\n");
 
     void *buf_ptr = malloc(size);
 
@@ -29,7 +30,8 @@ WSR_BUFFER_P wsr_buffer_create(int size, int id, void *buf_ptr){
     assert(size > 0);
 
     WSR_BUFFER_P buf = malloc(sizeof(WSR_BUFFER));
-    assert(buf != NULL);
+    if(buf == NULL)
+    	EMSG("Memory allocation failed\n");
 
     buf->size = size;
     buf->id = id;
@@ -51,7 +53,7 @@ WSR_BUFFER_LIST_P wsr_buffer_list_create(WSR_BUFFER_P buf){
     
     WSR_BUFFER_LIST_P ptr = malloc(sizeof(WSR_BUFFER_LIST));
     if(ptr == NULL)
-        EMSG("Memory allocation falies\n");
+        EMSG("Memory allocation failed\n");
 
     ptr->size = 0;
     ptr->next = NULL;
