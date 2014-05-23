@@ -217,6 +217,27 @@ int wsr_execute_a_task(WSR_TASK_P task, int thread_id, int num_threads){
 		mppa_tracepoint(wsr, task_execute__out, thread_id, task->id);
 //	printf("thread %d Completed the execution of task = %d \n", thread_id,  task->id);
 
+    WSR_TASK_LIST_P next,  list = task->dep_task_list;
+    while(list != NULL){
+        next = list->next;
+        free(list);
+        list = next;
+    }
+
+
+    WSR_BUFFER_LIST_P next_buf,  buf_list = task->buffer_list;
+    while(buf_list!= NULL){
+    	next_buf = buf_list->next;
+    	free(buf_list);
+    	buf_list = next_buf;
+    }
+
+    if(task->dep_task_ids != NULL)
+        free(task->dep_task_ids);
+
+    if(task->dep_buffer_ids != NULL)
+        free(task->dep_buffer_ids);
+
 	free(task);
 
 //	task->time = __k1_read_dsu_timestamp() - cpt;
