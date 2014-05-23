@@ -221,7 +221,7 @@ int  wsr_serialize_tasks(WSR_TASK_LIST *task_list, char *buf){
 //	DMSG("Serializing task list\n");
 	int num_tasks = 0;
 	int task_size = wsr_get_seralized_task_list_size(task_list, &num_tasks) + 2*sizeof(int);
-//	DMSG("Num of tasks = %d\n", num_tasks);
+	DMSG("Num of tasks = %d\n", num_tasks);
 
 	if(buf == NULL){
 		EMSG("Buffer is null\n");

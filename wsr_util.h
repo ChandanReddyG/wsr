@@ -10,7 +10,7 @@
  #include <pthread.h>
 
 //size of buffers used in double buffering scheme: 0.1 MB
-#define BUFFER_SIZE 200000
+#define BUFFER_SIZE 170000
 
 //#define BUFFER_SIZE 192
 #define PIPELINE_DEPTH 3

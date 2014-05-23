@@ -56,7 +56,7 @@ wsr_host-srcs := wsr_host.c wsr_util.c
 include ${K1_TOOLCHAIN_DIR}/share/make/Makefile.mppaipc
 
 run_hw: wsr_host_hw wsr_multibin
-	cd $(BIN_DIR); ./wsr_host_hw 1 16 
+	cd $(BIN_DIR); ./wsr_host_hw 16 16 
 
 run_hw_trace: wsr_host_hw wsr_multibin
 	cd $(BIN_DIR); ${K1_TOOLCHAIN_DIR}/bin/k1-trace-util  -a -l 0XFF --background=./k1-trace-util.pid ; ./wsr_host_hw 2 2 ; kill -SIGINT `cat ./k1-trace-util.pid`

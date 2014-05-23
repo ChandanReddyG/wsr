@@ -216,30 +216,38 @@ void *service_cc(void *arg){
 	int num_blocks = GLOBAL_MATRIX_SIZE / BLOCK_SIZE;
 	int num_rows_per_cluster = num_blocks / nb_clusters;
 	int num_cols_per_group = num_blocks/NUM_GROUPED_TASKS;
+	int num_chunks_per_col = num_blocks/NUM_GROUPED_TASKS;
 
-    printf("num blocks = %d, num_rows_per_cluster = %d, num cols per cluster  = %d\n",
+    DMSG("num blocks = %d, num_rows_per_cluster = %d, num cols per cluster  = %d\n",
     		num_blocks,  num_rows_per_cluster, num_cols_per_group);
 
     int num_tasks = 0, d_size = 0;
 	int prev_state = -1, cur_state = 0, next_state = 1;
-	int j, prev_row = 0, prev_col_start = -1, prev_col_end = -1;
+	int j,k, prev_row = 0, prev_col_start = -1, prev_col_end = -1, col_start = -1, col_end = -1;
+    int chunk_start, chunk_end;
 
 	for(i =0; i< num_rows_per_cluster;i++){
 
 		DMSG("-------------------------- iter = %d ------------------------------------------------\n", i);
 
 		for(j=0; j<num_cols_per_group; j++){
+            col_start = max(0, j*NUM_GROUPED_TASKS);
+            col_end =min((j+1)*NUM_GROUPED_TASKS, num_blocks);
 
+            for(k = 0; k<num_chunks_per_col; k++){
+
+            chunk_start = max(0, k*NUM_GROUPED_TASKS);
+            chunk_end = min((k+1)*NUM_GROUPED_TASKS, num_blocks);
 			WSR_TASK_LIST_P task_list = get_matmul_task_list(cluster_id,
-					nb_clusters, i, max(0, j*NUM_GROUPED_TASKS),
-					min( (j+1)*NUM_GROUPED_TASKS, GLOBAL_MATRIX_SIZE));
+					nb_clusters, i, col_start,
+					col_end , chunk_start, chunk_end);
 
 			if(task_list == NULL)
 				DMSG("task_list is null\n");
 
             DMSG("task list creation done\n");
 			size = wsr_serialize_tasks(task_list, buf[cur_state]);
-			printf("Buffer size  = %d\n", size );
+			DMSG("Buffer size  = %d\n", size );
 
 			//Receive the completed tasks of prev state
 			if(prev_col_start>-1 && prev_col_end > -1 && prev_row > -1){
@@ -247,13 +255,13 @@ void *service_cc(void *arg){
 				wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
 				WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size, &num_tasks);
 				copy_back_output(prev_task_list, cluster_id, nb_clusters, prev_row, prev_col_start,
-						prev_col_end);
+						prev_col_end, NUM_GROUPED_TASKS);
 
 			}
 
 			prev_row = i;
-			prev_col_start = max(0, j*NUM_GROUPED_TASKS);
-			prev_col_end = min( (j+1)*NUM_GROUPED_TASKS, GLOBAL_MATRIX_SIZE);
+			prev_col_start = col_start;
+			prev_col_end = col_end; 
 
 			start_async_read_of_executed_tasks(cluster_id, cur_state , buf[cur_state],BUFFER_SIZE);
 
@@ -269,6 +277,7 @@ void *service_cc(void *arg){
 			prev_state = cur_state;
 			cur_state = next_state;
 			next_state =  (next_state + 1)%PIPELINE_DEPTH;
+            }
 
 		}
 
@@ -279,7 +288,7 @@ void *service_cc(void *arg){
 		wait_till_executed_task_transfer_completion(cluster_id, prev_state, BUFFER_SIZE);
 		WSR_TASK_LIST_P prev_task_list = wsr_deseralize_tasks(buf[prev_state], &d_size,&num_tasks);
 		copy_back_output(prev_task_list, cluster_id, nb_clusters, prev_row, prev_col_start,
-				prev_col_end);
+				prev_col_end, NUM_GROUPED_TASKS);
 
 	}
 
